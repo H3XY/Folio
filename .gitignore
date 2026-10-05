@@ -1,0 +1,8 @@
+# dependencies and generated files (recreate with: npm install && npm run vendor && npm run package)
+node_modules/
+app/vendor/
+app/icon.png
+dist/
+release/
+.dump/
+*.log
