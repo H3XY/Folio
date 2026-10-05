@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; script-src-elem 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:">
+<title>Folio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand" aria-label="Folio"><span class="mark"></span>Folio</div>
+
+  <div class="group">
+    <button class="btn" id="btnOpen" title="Open (Ctrl+O)"><i data-i="open"></i><span>Open</span></button>
+    <button class="btn" id="btnAdd" title="Add PDFs or images as pages (Ctrl+Shift+O)"><i data-i="add"></i><span>Add pages</span></button>
+    <button class="btn" id="btnCombine" title="Combine files into one PDF"><i data-i="combine"></i><span>Combine</span></button>
+  </div>
+
+  <nav class="modes" role="tablist" aria-label="Tool sets" id="modes">
+    <button role="tab" data-mode="comment">Comment</button>
+    <button role="tab" data-mode="edit">Edit</button>
+    <button role="tab" data-mode="sign">E-Sign</button>
+    <button role="tab" data-mode="convert">Convert</button>
+  </nav>
+
+  <div class="group right">
+    <button class="icon-btn" id="btnUndo" title="Undo (Ctrl+Z)"><i data-i="undo"></i></button>
+    <button class="icon-btn" id="btnRedo" title="Redo (Ctrl+Y)"><i data-i="redo"></i></button>
+    <span class="sep"></span>
+    <button class="icon-btn" id="zoomOut" title="Zoom out (Ctrl+−)"><i data-i="minus"></i></button>
+    <select id="zoomSel" title="Zoom">
+      <option value="fit">Fit width</option>
+      <option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option>
+      <option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option>
+      <option value="3">300%</option><option value="4">400%</option>
+      <option value="custom" hidden></option>
+    </select>
+    <button class="icon-btn" id="zoomIn" title="Zoom in (Ctrl+=)"><i data-i="plus"></i></button>
+    <span class="sep"></span>
+    <button class="icon-btn" id="btnTheme" title="Light / dark"><i data-i="theme"></i></button>
+    <button class="btn primary" id="btnSave" title="Save (Ctrl+S)"><i data-i="save"></i><span>Save</span></button>
+  </div>
+</header>
+<div class="ribbon" role="toolbar" aria-label="Tools" id="tools"></div>
+<div class="banner" id="banner" hidden></div>
+
+<main class="work">
+  <aside class="rail" id="rail" aria-label="Pages">
+    <div class="rail-head">
+      <span class="label">Pages <b id="pageCount">0</b></span>
+      <div class="rail-actions">
+        <button class="icon-btn sm" id="pgRotL" title="Rotate left"><i data-i="rotl"></i></button>
+        <button class="icon-btn sm" id="pgRotR" title="Rotate right"><i data-i="rotr"></i></button>
+        <button class="icon-btn sm" id="pgBlank" title="Insert blank page after"><i data-i="blank"></i></button>
+        <button class="icon-btn sm" id="pgDup" title="Duplicate"><i data-i="dup"></i></button>
+        <button class="icon-btn sm" id="pgExtract" title="Save selected pages as a new PDF"><i data-i="extract"></i></button>
+        <button class="icon-btn sm danger" id="pgDel" title="Delete selected pages"><i data-i="trash"></i></button>
+      </div>
+    </div>
+    <div class="thumbs" id="thumbs" tabindex="0"></div>
+  </aside>
+
+  <section class="viewer" id="viewer" tabindex="-1">
+    <div class="stack" id="stack"></div>
+    <div class="empty" id="empty" hidden>
+      <div class="empty-card">
+        <div class="empty-sheet"></div>
+        <h1>Nothing open</h1>
+        <p>Open a PDF, or drop PDFs and images anywhere in this window.</p>
+        <button class="btn primary" id="emptyOpen"><i data-i="open"></i><span>Open PDF</span></button>
+      </div>
+    </div>
+    <div class="drop-veil" id="dropVeil" hidden><div>Drop to add pages</div></div>
+  </section>
+
+  <aside class="inspector" id="inspector">
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="style" aria-selected="true">Properties</button>
+      <button role="tab" data-tab="search">Search</button>
+      <button role="tab" data-tab="forms">Forms <b id="formCount" hidden></b></button>
+      <button role="tab" data-tab="sigs">Signatures <b id="sigCount" hidden></b></button>
+    </nav>
+    <div class="tab-body" data-body="style" id="styleBody"></div>
+    <div class="tab-body" data-body="search" hidden>
+      <div class="field">
+        <div class="search-row">
+          <input id="searchInput" type="search" placeholder="Find in document" autocomplete="off" spellcheck="false">
+        </div>
+        <label class="check"><input type="checkbox" id="searchCase"> Match case</label>
+      </div>
+      <div class="search-meta" id="searchMeta">Type to search every page.</div>
+      <div class="search-actions" id="searchActions" hidden>
+        <button class="btn sm" id="hitHighlight"><i data-i="highlight"></i><span>Highlight all</span></button>
+        <button class="btn sm danger-outline" id="hitRedact"><i data-i="redact"></i><span>Redact all</span></button>
+      </div>
+      <ol class="hits" id="hitList"></ol>
+    </div>
+    <div class="tab-body" data-body="forms" id="formsBody" hidden></div>
+    <div class="tab-body" data-body="sigs" id="sigsBody" hidden></div>
+  </aside>
+</main>
+
+<footer class="status">
+  <span id="stPage">—</span>
+  <span id="stZoom" class="mono">100%</span>
+  <span id="stHint" class="hint"></span>
+  <span class="offline" title="Folio has no network access. Your files never leave this computer."><i data-i="lock"></i>Offline · files stay on this PC</span>
+</footer>
+
+<dialog id="sigDlg" class="dlg">
+  <form method="dialog" class="dlg-inner" id="sigForm">
+    <header class="dlg-head">
+      <h2 id="sigTitle">Signature</h2>
+      <nav class="seg" id="sigMode">
+        <button type="button" data-mode="draw" aria-pressed="true">Draw</button>
+        <button type="button" data-mode="type" aria-pressed="false">Type</button>
+      </nav>
+    </header>
+    <div class="sig-pad" id="sigDrawWrap">
+      <canvas id="sigCanvas" width="1040" height="340"></canvas>
+      <div class="sig-line"><span>Sign above the line</span></div>
+    </div>
+    <div class="sig-type" id="sigTypeWrap" hidden>
+      <input id="sigText" type="text" placeholder="Type your name" autocomplete="off" spellcheck="false">
+      <div class="sig-preview" id="sigPreview"></div>
+    </div>
+    <div class="sig-colors" id="sigColors"></div>
+    <div class="sig-saved" id="sigSaved"></div>
+    <footer class="dlg-foot">
+      <button type="button" class="btn" id="sigClear">Clear</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="sigCancel">Cancel</button>
+      <button type="button" class="btn primary" id="sigUse">Place signature</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog id="confirmDlg" class="dlg small">
+  <div class="dlg-inner">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmText"></p>
+    <footer class="dlg-foot">
+      <span class="grow"></span>
+      <button type="button" class="btn" id="confirmNo">Cancel</button>
+      <button type="button" class="btn primary" id="confirmYes">OK</button>
+    </footer>
+  </div>
+</dialog>
+
+<dialog id="panelDlg" class="dlg">
+  <form method="dialog" class="dlg-inner" id="panelForm" novalidate>
+    <header class="dlg-head"><h2 id="panelTitle"></h2></header>
+    <div class="panel-body" id="panelBody"></div>
+    <footer class="dlg-foot" id="panelFoot"></footer>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="busy" id="busy" hidden><div class="busy-card"><span class="spinner"></span><span id="busyText">Working…</span></div></div>
+
+<input type="file" id="fileOpen" accept=".pdf,application/pdf,image/*,.html,.htm,.txt" multiple hidden>
+<input type="file" id="fileAdd" accept=".pdf,application/pdf,image/*,.html,.htm,.txt" multiple hidden>
+<input type="file" id="fileImage" accept="image/*" hidden>
+
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/pdf-lib.min.js"></script>
+<script src="vendor/fontkit.umd.min.js"></script>
+<script src="app.js"></script>
+<script src="fonts.js"></script>
+<script src="forms.js"></script>
+<script src="contentstream.js"></script>
+<script src="edit.js"></script>
+<script src="stamps.js"></script>
+<script src="esign.js"></script>
+<script src="convert.js"></script>
+<script src="combine.js"></script>
+</body>
+</html>
