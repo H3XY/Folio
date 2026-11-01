@@ -94,6 +94,8 @@ i[data-i] svg { width: 100%; height: 100%; stroke: currentColor; fill: none; str
 .icon-btn.sm { width: 26px; height: 26px; }
 .icon-btn.sm i[data-i] { width: 16px; height: 16px; }
 .icon-btn.danger:hover:not(:disabled) { color: var(--danger); background: var(--danger-soft); }
+.panel-toggle { display: none; }
+.panel-backdrop { display: none; }
 
 /* tool sets (Comment / Edit / E-Sign / Convert) */
 .modes { display: flex; gap: 2px; margin: 0 auto; padding: 3px; background: var(--panel-2); border-radius: 9px; }
@@ -424,9 +426,17 @@ legend { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; colo
   .ribbon .tool { padding: 0 8px; }
 }
 @media (max-width: 860px) {
-  .work { grid-template-columns: 1fr; }
-  .rail, .inspector { display: none; }
+  .work { grid-template-columns: 1fr; position: relative; }
   .brand { font-size: 0; gap: 0; }
+  .panel-toggle { display: inline-grid; }
+  .rail, .inspector {
+    position: absolute; top: 0; bottom: 0; z-index: 41; width: min(82vw, 300px);
+    box-shadow: var(--shadow-pop); transition: transform .2s ease;
+  }
+  .rail { left: 0; transform: translateX(-100%); }
+  .inspector { right: 0; transform: translateX(100%); }
+  body.show-rail .rail, body.show-inspector .inspector { transform: translateX(0); }
+  body.show-rail .panel-backdrop, body.show-inspector .panel-backdrop { display: block; position: absolute; inset: 0; z-index: 40; background: rgba(10, 14, 20, .4); }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

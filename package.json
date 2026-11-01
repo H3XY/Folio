@@ -31,5 +31,9 @@
     "node-forge": "^1.4.0",
     "pdf-lib": "^1.17.1",
     "pptxgenjs": "^4.0.1"
+  },
+  "allowScripts": {
+    "electron@41.7.1": true,
+    "tesseract.js@5.1.1": true
   }
 }

@@ -15,6 +15,6 @@ packager({
   overwrite: true,
   icon: path.join(root, 'build', 'icon.ico'),
   prune: true,
-  ignore: [/^\/dist(\/|$)/, /^\/release(\/|$)/, /^\/scripts(\/|$)/, /^\/build(\/|$)/, /^\/\.dump(\/|$)/, /^\/README\.md$/],
+  ignore: [/^\/dist(\/|$)/, /^\/release(\/|$)/, /^\/scripts(\/|$)/, /^\/build(\/|$)/, /^\/\.dump(\/|$)/, /^\/\.claude(\/|$)/, /^\/README\.md$/],
   win32metadata: { CompanyName: 'Folio', FileDescription: 'Folio PDF editor', ProductName: 'Folio' },
 }).then((paths) => console.log('Wrote', paths.join(', '))).catch((e) => { console.error(e); process.exit(1); });

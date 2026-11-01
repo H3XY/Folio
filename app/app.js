@@ -91,6 +91,8 @@ const ICONS = {
   alignl:'<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>',
   alignc: '<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>',
   alignr: '<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>',
+  sidebarl: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+  sidebarr: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
 };
 function hydrateIcons(root = document) {
   $$('i[data-i]', root).forEach((el) => {
@@ -1242,6 +1244,7 @@ function wireThumb(t) {
     }
     $$('#thumbs .thumb').forEach((x) => x.classList.toggle('selected', S.selPages.has(x.dataset.id)));
     scrollToPage(id);
+    if (document.body.classList.contains('show-rail')) closeDrawers();
   });
   t.addEventListener('dragstart', (e) => {
     const id = t.dataset.id;
@@ -1902,6 +1905,15 @@ $('#btnTheme').onclick = () => {
 };
 try { const th = localStorage.getItem('folio.theme'); if (th) document.documentElement.dataset.theme = th; } catch { /* ignore */ }
 
+// Narrow windows (below ~860px, reachable by resizing or Windows' half-screen Snap) turn the
+// Pages rail and the Properties/Search/Forms/Signatures panel into dismissible drawers instead
+// of hiding them outright, so every feature stays reachable at any window size.
+function closeDrawers() { document.body.classList.remove('show-rail', 'show-inspector'); }
+$('#btnPagesToggle').onclick = () => { document.body.classList.toggle('show-rail'); document.body.classList.remove('show-inspector'); };
+$('#btnInspectorToggle').onclick = () => { document.body.classList.toggle('show-inspector'); document.body.classList.remove('show-rail'); };
+$('#panelBackdrop').onclick = closeDrawers;
+window.addEventListener('resize', () => { if (window.innerWidth > 860) closeDrawers(); });
+
 let searchTimer;
 $('#searchInput').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 220); });
 $('#searchInput').addEventListener('keydown', (e) => { if (e.key === 'Escape') { clearSearch(); e.target.blur(); } e.stopPropagation(); });
@@ -1950,7 +1962,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.target.closest?.('#thumbs') && (k === 'delete' || k === 'backspace')) { e.preventDefault(); deletePages(); return; }
   if ((k === 'delete' || k === 'backspace') && S.sel) { e.preventDefault(); deleteSelected(); return; }
-  if (k === 'escape') { if (S.sel) select(null); else setTool('select'); return; }
+  if (k === 'escape') { if (document.body.classList.contains('show-rail') || document.body.classList.contains('show-inspector')) closeDrawers(); else if (S.sel) select(null); else setTool('select'); return; }
   if (S.sel && k.startsWith('arrow')) {
     e.preventDefault();
     const step = e.shiftKey ? 10 : 1;

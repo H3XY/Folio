@@ -9,6 +9,7 @@
 </head>
 <body>
 <header class="bar">
+  <button class="icon-btn panel-toggle" id="btnPagesToggle" title="Pages" aria-label="Show pages panel"><i data-i="sidebarl"></i></button>
   <div class="brand" aria-label="Folio"><span class="mark"></span>Folio</div>
 
   <div class="group">
@@ -40,12 +41,14 @@
     <span class="sep"></span>
     <button class="icon-btn" id="btnTheme" title="Light / dark"><i data-i="theme"></i></button>
     <button class="btn primary" id="btnSave" title="Save (Ctrl+S)"><i data-i="save"></i><span>Save</span></button>
+    <button class="icon-btn panel-toggle" id="btnInspectorToggle" title="Properties, search, forms, signatures" aria-label="Show properties panel"><i data-i="sidebarr"></i></button>
   </div>
 </header>
 <div class="ribbon" role="toolbar" aria-label="Tools" id="tools"></div>
 <div class="banner" id="banner" hidden></div>
 
 <main class="work">
+  <div class="panel-backdrop" id="panelBackdrop"></div>
   <aside class="rail" id="rail" aria-label="Pages">
     <div class="rail-head">
       <span class="label">Pages <b id="pageCount">0</b></span>
