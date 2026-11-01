@@ -3,6 +3,9 @@
 Offline PDF editor for Windows (Electron + pdf.js + pdf-lib). No network access: the app blocks all web requests,
 and every library, font lookup and the OCR engine run locally.
 
+**[Download the latest release](https://github.com/H3XY/Folio/releases/latest)** — unzip `Folio-win32-x64.zip`
+anywhere and run `Folio.exe`. No installer, no admin rights.
+
 ## Tool sets
 
 - **Comment** – text, highlight, draw, arrows, lines, boxes, ellipses, images, whiteout, redaction.
