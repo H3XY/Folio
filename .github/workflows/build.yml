@@ -1,0 +1,35 @@
+name: Build
+
+# Continuous verification: builds Folio on every push to dev/main and every PR, so a broken
+# package.js or missing vendor file surfaces immediately instead of at release time. This never
+# publishes anything — see release.yml for the tag-triggered draft release.
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npm run vendor
+      - run: npm run package
+
+      - name: Zip the build
+        shell: pwsh
+        run: Compress-Archive -Path "dist/Folio-win32-x64/*" -DestinationPath "dist/Folio-win32-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folio-win32-x64-${{ github.sha }}
+          path: dist/Folio-win32-x64.zip
+          retention-days: 14
