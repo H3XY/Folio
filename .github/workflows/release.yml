@@ -1,0 +1,84 @@
+name: Release
+
+# Builds Folio.exe from source on a GitHub-hosted runner so every release is traceable back to a
+# tagged commit (this is also a prerequisite for SignPath Foundation code signing, which only
+# trusts builds that come from a "trusted build system" like this one, not a local machine).
+#
+# Code signing is optional and off until SIGNPATH_API_TOKEN etc. are added as repo secrets (see
+# README's "Code signing" note). Until then this still produces an unsigned, reproducible,
+# source-verifiable build attached to a draft release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npm run vendor
+      - run: npm run package
+
+      - name: Zip the build
+        shell: pwsh
+        run: Compress-Archive -Path "dist/Folio-win32-x64/*" -DestinationPath "dist/Folio-win32-x64-unsigned.zip"
+
+      # Everything below here only runs once SignPath secrets exist; until then the build above
+      # is still produced and released unsigned.
+      - name: Check for SignPath credentials
+        id: signpath
+        shell: bash
+        run: echo "enabled=${{ secrets.SIGNPATH_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload unsigned artifact for signing
+        if: steps.signpath.outputs.enabled == 'true'
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folio-win32-x64-unsigned
+          path: dist/Folio-win32-x64-unsigned.zip
+
+      - name: Submit signing request to SignPath
+        if: steps.signpath.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: "${{ secrets.SIGNPATH_API_TOKEN }}"
+          organization-id: "${{ secrets.SIGNPATH_ORG_ID }}"
+          project-slug: "${{ secrets.SIGNPATH_PROJECT_SLUG }}"
+          signing-policy-slug: "${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}"
+          github-artifact-id: "${{ steps.upload-unsigned.outputs.artifact-id }}"
+          wait-for-completion: true
+          output-artifact-directory: dist/signed
+
+      - name: Assemble release asset
+        shell: pwsh
+        run: |
+          if (Test-Path "dist/signed") {
+            Compress-Archive -Path "dist/signed/*" -DestinationPath "dist/Folio-win32-x64.zip"
+          } else {
+            Copy-Item "dist/Folio-win32-x64-unsigned.zip" "dist/Folio-win32-x64.zip"
+          }
+          (Get-FileHash "dist/Folio-win32-x64.zip" -Algorithm SHA256).Hash | Out-File "dist/Folio-win32-x64.zip.sha256" -NoNewline -Encoding ascii
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/Folio-win32-x64.zip
+            dist/Folio-win32-x64.zip.sha256
+          body: |
+            SHA-256: see the attached `.sha256` file.
+            Built by this workflow run from `${{ github.sha }}`: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Offline PDF editor",
   "main": "main.js",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "start": "electron .",

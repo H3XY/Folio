@@ -6,6 +6,12 @@ and every library, font lookup and the OCR engine run locally.
 **[Download the latest release](https://github.com/H3XY/Folio/releases/latest)** — unzip `Folio-win32-x64.zip`
 anywhere and run `Folio.exe`. No installer, no admin rights.
 
+> Folio isn't code-signed yet, so Windows SmartScreen will warn that it's from an "Unknown
+> publisher" the first time you run it — click **More info → Run anyway**. This is a reputation
+> gate, not a malware detection; the build is scanned clean (see `.sha256` next to each release
+> asset to verify it matches the one built from this source). An application for free signing
+> through [SignPath Foundation](https://signpath.org) is in progress — see `.github/workflows/release.yml`.
+
 ## Tool sets
 
 - **Comment** – text, highlight, draw, arrows, lines, boxes, ellipses, images, whiteout, redaction.
