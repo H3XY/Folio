@@ -17,4 +17,5 @@ packager({
   prune: true,
   ignore: [/^\/dist(\/|$)/, /^\/release(\/|$)/, /^\/scripts(\/|$)/, /^\/build(\/|$)/, /^\/\.dump(\/|$)/, /^\/\.claude(\/|$)/, /^\/README\.md$/],
   win32metadata: { CompanyName: 'Folio', FileDescription: 'Folio PDF editor', ProductName: 'Folio' },
+  appCopyright: `Copyright © ${new Date().getFullYear()} Folio`,
 }).then((paths) => console.log('Wrote', paths.join(', '))).catch((e) => { console.error(e); process.exit(1); });
