@@ -1,0 +1,12 @@
+{
+  "appId": "com.h3xy.folio",
+  "appName": "Folio",
+  "webDir": "app",
+  "backgroundColor": "#1a1d21",
+  "ios": {
+    "contentInset": "never"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

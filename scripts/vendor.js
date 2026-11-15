@@ -12,6 +12,7 @@ for (const [src, dst] of [
   ['pdfjs-dist/build/pdf.worker.min.js', 'pdf.worker.min.js'],
   ['pdf-lib/dist/pdf-lib.min.js', 'pdf-lib.min.js'],
   ['@pdf-lib/fontkit/dist/fontkit.umd.min.js', 'fontkit.umd.min.js'],
+  ['@capacitor/core/dist/capacitor.js', 'capacitor.js'], // mobile shell only; inert on desktop
   ['tesseract.js/dist/tesseract.min.js', 'tesseract/tesseract.min.js'],
   ['tesseract.js/dist/worker.min.js', 'tesseract/worker.min.js'],
   ['@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz', 'tesseract/lang/eng.traineddata.gz'],
@@ -19,6 +20,12 @@ for (const [src, dst] of [
 // OCR engine builds: the LSTM engine, with and without SIMD (the worker picks one at runtime)
 for (const f of fs.readdirSync(nm('tesseract.js-core'))) {
   if (/^tesseract-core(-simd)?-lstm\.wasm\.js$/.test(f)) fs.copyFileSync(path.join(nm('tesseract.js-core'), f), path.join(out, 'tesseract', 'core', f));
+}
+// Handwriting fonts for typed signatures (OFL / Apache-2.0), with their licenses
+fs.mkdirSync(path.join(out, 'fonts', 'sig'), { recursive: true });
+for (const f of ['dancing-script', 'great-vibes', 'caveat', 'sacramento', 'allura', 'homemade-apple']) {
+  fs.copyFileSync(nm(`@fontsource/${f}/files/${f}-latin-400-normal.woff2`), path.join(out, 'fonts', 'sig', `${f}.woff2`));
+  fs.copyFileSync(nm(`@fontsource/${f}/LICENSE`), path.join(out, 'fonts', 'sig', `${f}.LICENSE.txt`));
 }
 fs.cpSync(nm('pdfjs-dist/cmaps'), path.join(out, 'cmaps'), { recursive: true });
 fs.cpSync(nm('pdfjs-dist/standard_fonts'), path.join(out, 'standard_fonts'), { recursive: true });
