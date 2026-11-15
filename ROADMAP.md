@@ -51,33 +51,46 @@ All platforms share the same UI in `app/`. Native access goes through one bridge
 
 - [x] **Signing on mobile**: `lib/signing-core.js` is shared by desktop and a browser bundle
       (`app/vendor/folio-sign.js`, built by `scripts/build-mobile.js`) with Node's trusted roots baked in.
-      Digital IDs are password-protected .p12 files in the app's private storage.
-  - [ ] Move ID storage to the iOS Keychain / Android Keystore.
-  - [ ] Test creating an ID and signing on a real device (works in a browser page; simulator form-filling was flaky).
+      Digital IDs (password-protected .p12) live in the iOS Keychain / Android Keystore-backed storage
+      (`@aparajita/capacitor-secure-storage`, this-device-only, never synced); older file-based IDs migrate.
+  - [ ] Create an ID and sign on a real phone (the bundle signs and verifies in a browser page, and the dialog reads
+        the Keychain on the simulator, but simulator keyboard input was too unreliable to finish the flow).
 - [x] **Office export on mobile**: `lib/export.js` (docx, exceljs, pptxgenjs) shared by desktop and
       `app/vendor/folio-export.js`; files go out through the share sheet. Verified on the iPhone simulator.
 - [x] **Open from Files / "Open in Folio"**: iOS `CFBundleDocumentTypes` (Folio appears in the share sheet) and an
       Android VIEW intent filter; files arrive through the Capacitor App plugin. Verified on iOS, cold start.
-  - [ ] Appear under Files' "Open With" too (needs open-in-place document support).
+  - [x] Appear under Files' "Open With" too: `LSSupportsOpeningDocumentsInPlace`, with the scene delegate copying
+        the security-scoped original into a private temp copy (the original is never written).
 - [x] **Fonts on mobile**: Arimo / Tinos / Cousine / Carlito (OFL, metric-compatible with Arial / Times New Roman /
       Courier New / Calibri) bundled; also fill in missing system fonts on desktop (Calibri on macOS).
 - [x] **Touch UX**: pinch-zoom of the document (keeps the point under the fingers), one-finger scrolling with the
       Select tool, long-press to add marks to a selection, bottom-sheet inspector on phones, dialogs open without
       the keyboard.
 - [x] App icon and splash screens for iOS/Android.
-- [ ] Converting HTML / text / Office files *to* PDF on mobile.
+- [x] Text / Markdown → PDF on mobile (drawn with pdf-lib, no browser engine needed).
+- [ ] HTML and Office → PDF on mobile: needs a layout engine phones don't offer offline (desktop uses Chromium,
+      Office or LibreOffice). Desktop-only for now; the Create PDF dialog says so.
 
 ## Phase 2 — store readiness
 
-- [ ] Apple Developer Program ($99/yr), App Store Connect record, bundle id `com.h3xy.folio` (change before first
-      upload if you want another), privacy nutrition label: "Data Not Collected".
-- [ ] Google Play developer account ($25 once). New personal accounts must run a **closed test with 12+ testers
-      for 14 days** before production access — start this early.
-- [ ] Mac App Store build: `electron-builder`/`@electron/osx-sign` with the MAS entitlements (sandbox,
-      user-selected files read/write), and a notarized DMG for direct download.
-- [ ] Microsoft Store (MSIX) submission.
-- [ ] Privacy policy page (short: no data collected, no network access).
-- [ ] Store screenshots for each device class, made from Folio's own UI.
+Everything that can be prepared in the repo is done; what's left needs accounts, fees and signing identities that
+belong to you. Step-by-step instructions and paste-ready listing text: `store/LISTING.md`.
+
+- [x] Privacy policy: `PRIVACY.md` (no data collected, no network access).
+- [x] Listing text, keywords, questionnaire answers and screenshots (`store/`): iPhone 6.9", iPad 13", Android
+      phone, Mac 2880×1800.
+- [x] iOS: privacy manifest (`PrivacyInfo.xcprivacy`, no tracking / no data), Release build compiles for devices,
+      `npm run ios:archive`.
+- [x] Android: release signing from an untracked `android/keystore.properties` (`npm run android:keystore` makes
+      the upload key), backups off, `npm run android:bundle` → `.aab`.
+- [x] Mac App Store: sandbox entitlements (`build/mac/`), universal `npm run package:mas` (+ signed `.pkg` when the
+      certificates are set), and a notarizable `npm run package:dmg` for direct download. LibreOffice conversion is
+      disabled inside the sandbox.
+- [x] Microsoft Store: `build/appx/AppxManifest.xml` + `scripts/make-msix.ps1`; CI builds `Folio.msix` on every run.
+- [ ] **You**: Apple Developer Program ($99/yr) → certificates, App Store Connect record, upload.
+- [ ] **You**: Google Play account ($25) → upload key, closed test with **12+ testers for 14 days**, then production.
+- [ ] **You**: Microsoft Partner Center → reserve the name, set the 3 identity variables, submit the MSIX.
+- [ ] **You**: confirm the export-compliance answer (encryption exemption) and the final app name.
 
 ## Phase 3 — feature parity with commercial PDF suites
 

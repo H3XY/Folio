@@ -1070,7 +1070,11 @@ function setTool(t) {
   document.body.dataset.tool = t;
   syncRibbon();
   if (t !== 'select' && S.sel) select(null);
-  $('#stHint').textContent = TOOL_INFO[t]?.hint || '';
+  // Hints are written for mouse and keyboard; on touch screens say tap / press and hold instead.
+  let hint = TOOL_INFO[t]?.hint || '';
+  if (TOUCH) hint = hint.replace(/Double-click/g, 'Double-tap').replace(/\bClick\b/g, 'Tap').replace(/\bclick\b/g, 'tap')
+    .replace(/ Hold Shift to snap to 45°\./, '').replace(/ Delete removes it\./, '');
+  $('#stHint').textContent = hint;
   if (prev !== t) Folio.tools[t]?.activate?.();
   renderInspector();
 }
@@ -2235,7 +2239,7 @@ async function makeSample() {
   p.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: teal });
   p.drawText('SAMPLE DOCUMENT', { x: 60, y: 767, size: 10, font: bold, color: rgb(1, 1, 1) });
   p.drawText('Welcome to Folio', { x: 60, y: 690, size: 30, font: bold, color: ink });
-  p.drawText(`Open your own PDF with ${APPLE ? "Cmd" : "Ctrl"}+O, or drop files anywhere in the window.`, { x: 60, y: 662, size: 12, font, color: grey });
+  p.drawText(TOUCH ? 'Tap the folder button at the top to open your own PDF.' : `Open your own PDF with ${APPLE ? "Cmd" : "Ctrl"}+O, or drop files anywhere in the window.`, { x: 60, y: 662, size: 12, font, color: grey });
   const tips = [
     ['Highlight (H)', 'drag across any line of text.'],
     ['Text (T)', 'click anywhere to type; double-click text to edit it.'],
@@ -2243,7 +2247,7 @@ async function makeSample() {
     ['Signature (S)', 'draw or type it once, then click to place it.'],
     ['Redact (X)', 'boxes are burned in on save. Text underneath is removed.'],
     ['Pages panel', 'drag thumbnails to reorder; rotate, duplicate, extract, delete.'],
-    [`Search (${APPLE ? "Cmd" : "Ctrl"}+F)`, 'find text, then highlight or redact every match at once.'],
+    [TOUCH ? 'Search' : `Search (${APPLE ? "Cmd" : "Ctrl"}+F)`, 'find text, then highlight or redact every match at once.'],
     ['Forms', 'fill the fields below from the Forms tab.'],
   ];
   let y = 600;

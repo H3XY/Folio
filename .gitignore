@@ -7,3 +7,12 @@ release/
 .dump/
 *.log
 scripts/mobile-shims/roots.generated.json
+
+# Release signing secrets (never commit)
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile

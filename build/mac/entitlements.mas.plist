@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Mac App Store (sandboxed) entitlements for the main app. No network entitlement: Folio is offline. -->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key><true/>
+  <key>com.apple.security.files.user-selected.read-write</key><true/>
+  <key>com.apple.security.files.downloads.read-write</key><true/>
+  <key>com.apple.security.print</key><true/>
+  <key>com.apple.security.cs.allow-jit</key><true/>
+  <key>com.apple.application-identifier</key><string>TEAMID.com.h3xy.folio</string>
+  <key>com.apple.developer.team-identifier</key><string>TEAMID</string>
+</dict>
+</plist>

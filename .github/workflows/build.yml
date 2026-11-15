@@ -33,3 +33,19 @@ jobs:
           name: Folio-win32-x64-${{ github.sha }}
           path: dist/Folio-win32-x64.zip
           retention-days: 14
+
+      # Microsoft Store package (unsigned; the Store signs it on submission). Identity values are public and
+      # come from repository variables once the app is reserved in Partner Center; placeholders until then.
+      - name: Build MSIX
+        shell: pwsh
+        env:
+          FOLIO_MSIX_NAME: ${{ vars.FOLIO_MSIX_NAME }}
+          FOLIO_MSIX_PUBLISHER: ${{ vars.FOLIO_MSIX_PUBLISHER }}
+          FOLIO_MSIX_PUBLISHER_DISPLAY: ${{ vars.FOLIO_MSIX_PUBLISHER_DISPLAY }}
+        run: ./scripts/make-msix.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folio-msix-${{ github.sha }}
+          path: dist/Folio.msix
+          retention-days: 14

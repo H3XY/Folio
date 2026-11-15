@@ -467,10 +467,40 @@
 
   // ------------------------------------------------------------ create PDF from other files
   const CREATE_RE = /\.(docx?|docm|rtf|odt|xlsx?|xlsm|xlsb|csv|ods|pptx?|pptm|ppsx?|odp|html?|txt|md)$/i;
+  const IS_MOBILE = !!native?.platform;
+
+  // Plain text -> PDF without a browser engine: Letter pages, 10pt monospace, long lines wrapped. Used on mobile
+  // (and in a plain browser); the desktop app prints text through Chromium instead.
+  async function textToPdf(text, title) {
+    const doc = await PDFDocument.create();
+    doc.setTitle(title);
+    if (typeof fontkit !== 'undefined') doc.registerFontkit(fontkit);
+    const font = await Folio.fonts.embed(doc, { font: 'Courier New', bold: false, italic: false });
+    const size = 10, lead = size * 1.25, W = 612, H = 792, M = 54;
+    const perLine = Math.max(10, Math.floor((W - 2 * M) / font.widthOfTextAtSize('M', size)));
+    const lines = [];
+    for (const raw of text.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n')) {
+      const safe = Folio.fonts.safe ? Folio.fonts.safe(font, raw) : [...raw].filter((ch) => { try { font.encodeText(ch); return true; } catch { return false; } }).join('');
+      if (!safe.length) { lines.push(''); continue; }
+      for (let i = 0; i < safe.length; i += perLine) lines.push(safe.slice(i, i + perLine));
+    }
+    const perPage = Math.floor((H - 2 * M) / lead);
+    for (let i = 0; i < Math.max(1, lines.length); i += perPage) {
+      const page = doc.addPage([W, H]);
+      lines.slice(i, i + perPage).forEach((ln, j) => { if (ln) page.drawText(ln, { x: M, y: H - M - size - j * lead, size, font }); });
+    }
+    return doc.save();
+  }
+
   Folio.createPdf = {
     handles: (name) => CREATE_RE.test(name),
+    textToPdf,
     async convert(f) {
+      if (/\.(txt|md)$/i.test(f.name) && (!native || IS_MOBILE)) {
+        return textToPdf(new TextDecoder().decode(f.data).replace(/^\ufeff/, ''), f.name.replace(/\.\w+$/, ''));
+      }
       if (!native) throw new Error(`Creating a PDF from ${f.name} needs the Folio desktop app.`);
+      if (IS_MOBILE) throw new Error(`Creating a PDF from ${f.name} needs Folio for Windows or Mac for now.`);
       let r;
       if (/\.html?$/i.test(f.name)) r = await native.htmlToPdf(f.path ? { filePath: f.path } : { html: new TextDecoder().decode(f.data) });
       else if (/\.(txt|md)$/i.test(f.name)) {
@@ -491,12 +521,13 @@
       body: `<p class="note">Choose one or more files. Folio converts each one to PDF and opens the result. Several files are combined into one document.</p>
         <ul class="conv-list">
           ${row('Images (PNG, JPEG, WebP, GIF)', true, 'Folio')}
-          ${row('Web pages (HTML) and text files', !!native && !info.mobile, 'Folio')}
+          ${row('Text files (.txt, .md)', true, 'Folio')}
+          ${row('Web pages (HTML)', !!native && !info.mobile, 'Folio')}
           ${office('word', 'Microsoft Word')}
           ${office('excel', 'Microsoft Excel')}
           ${office('powerpoint', 'Microsoft PowerPoint')}
         </ul>
-        ${info.mobile ? '<p class="note">Converting web pages, text and Office files to PDF needs Folio for Windows or Mac for now.</p>'
+        ${info.mobile ? '<p class="note">Converting web pages and Office files to PDF needs Folio for Windows or Mac for now.</p>'
           : native && !(info.word && info.excel && info.powerpoint) && !info.libreoffice ? '<p class="note">Office files are converted by Microsoft Office or LibreOffice, so one of them must be installed on this PC. Nothing is uploaded.</p>' : ''}`,
       actions: [{ label: 'Cancel' }, { label: 'Choose files…', primary: true, run: () => { setTimeout(() => pickFiles('replace'), 0); return true; } }],
     });
