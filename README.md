@@ -6,11 +6,26 @@ and every library, font lookup and the OCR engine run locally.
 **[Download the latest release](https://github.com/H3XY/Folio/releases/latest)** — unzip `Folio-win32-x64.zip`
 anywhere and run `Folio.exe`. No installer, no admin rights.
 
-> Folio isn't code-signed yet, so Windows SmartScreen will warn that it's from an "Unknown
-> publisher" the first time you run it — click **More info → Run anyway**. This is a reputation
-> gate, not a malware detection; the build is scanned clean (see `.sha256` next to each release
-> asset to verify it matches the one built from this source). An application for free signing
-> through [SignPath Foundation](https://signpath.org) is in progress — see `.github/workflows/release.yml`.
+> The download from GitHub isn't code-signed, so Windows SmartScreen will warn that it's from an
+> "Unknown publisher" the first time you run it — click **More info → Run anyway**. This is a
+> reputation gate, not a malware detection; every release is built from a tagged commit by
+> `.github/workflows/release.yml`, and the `.sha256` next to each asset lets you check it matches.
+> A signed version is planned through the Microsoft Store, which signs apps it distributes. See
+> [Code signing](#code-signing) for the details.
+
+## Code signing
+
+- **Microsoft Store (planned):** the Store signs the MSIX package (`scripts/make-msix.ps1`, built in CI) on
+  submission, so Store installs show no SmartScreen warning.
+- **GitHub download:** unsigned for now. Folio applied to the free [SignPath Foundation](https://signpath.org)
+  program for open-source projects in November 2026 but wasn't accepted, because the program requires a
+  project to already have public visibility (stars, contributors, articles). Folio can reapply once it has that.
+- **Signing hooks are ready:** `release.yml` signs automatically as soon as SignPath credentials are added as
+  repository secrets (`SIGNPATH_API_TOKEN`, `SIGNPATH_ORG_ID`, `SIGNPATH_PROJECT_SLUG`,
+  `SIGNPATH_SIGNING_POLICY_SLUG`) — whether from an accepted Foundation application or a paid SignPath plan.
+  Without them, it publishes the unsigned build.
+- **macOS:** see `scripts/package.js` (`npm run package:mas` for the Mac App Store, `npm run package:dmg` for a
+  notarized download once Apple Developer credentials are set).
 
 ## Tool sets
 
