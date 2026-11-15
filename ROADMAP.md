@@ -47,18 +47,25 @@ get a clearance opinion from a trademark attorney (also check the App Store and 
 All platforms share the same UI in `app/`. Native access goes through one bridge, `window.folio`:
 `preload.js` + `lib/` on desktop, `app/mobile.js` on iOS/Android.
 
-## Phase 1 — mobile parity for the core (next)
+## Phase 1 — mobile parity for the core
 
-- [ ] **Signing on mobile**: bundle `lib/signing.js` (node-forge + @signpdf) for the browser with esbuild; keep
-      digital IDs in the iOS Keychain / Android Keystore.
-- [ ] **Office export on mobile**: bundle `lib/convert.js` `exportDoc` (docx, exceljs, pptxgenjs are browser-safe).
-- [ ] **Open from Files / "Open in Folio"**: register PDF document types (iOS `CFBundleDocumentTypes`,
-      Android intent filters) and feed them to `onOpenFiles`.
-- [ ] **Fonts on mobile**: bundle metric-compatible OFL fonts (Liberation Sans/Serif/Mono, Carlito) so edited text
-      matches Arial/Times/Courier/Calibri without the system fonts.
-- [ ] **Touch UX**: pinch-zoom on the page canvas, larger hit targets, long-press for "select more",
-      bottom sheet instead of the right-hand inspector on phones.
-- [ ] App icon and splash screens for iOS/Android (from `build/icon`).
+- [x] **Signing on mobile**: `lib/signing-core.js` is shared by desktop and a browser bundle
+      (`app/vendor/folio-sign.js`, built by `scripts/build-mobile.js`) with Node's trusted roots baked in.
+      Digital IDs are password-protected .p12 files in the app's private storage.
+  - [ ] Move ID storage to the iOS Keychain / Android Keystore.
+  - [ ] Test creating an ID and signing on a real device (works in a browser page; simulator form-filling was flaky).
+- [x] **Office export on mobile**: `lib/export.js` (docx, exceljs, pptxgenjs) shared by desktop and
+      `app/vendor/folio-export.js`; files go out through the share sheet. Verified on the iPhone simulator.
+- [x] **Open from Files / "Open in Folio"**: iOS `CFBundleDocumentTypes` (Folio appears in the share sheet) and an
+      Android VIEW intent filter; files arrive through the Capacitor App plugin. Verified on iOS, cold start.
+  - [ ] Appear under Files' "Open With" too (needs open-in-place document support).
+- [x] **Fonts on mobile**: Arimo / Tinos / Cousine / Carlito (OFL, metric-compatible with Arial / Times New Roman /
+      Courier New / Calibri) bundled; also fill in missing system fonts on desktop (Calibri on macOS).
+- [x] **Touch UX**: pinch-zoom of the document (keeps the point under the fingers), one-finger scrolling with the
+      Select tool, long-press to add marks to a selection, bottom-sheet inspector on phones, dialogs open without
+      the keyboard.
+- [x] App icon and splash screens for iOS/Android.
+- [ ] Converting HTML / text / Office files *to* PDF on mobile.
 
 ## Phase 2 — store readiness
 

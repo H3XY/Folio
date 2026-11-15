@@ -5,7 +5,7 @@ const { createStore, verifyPdf } = require('../lib/signing');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'folio-ids-'));
   const store = createStore(dir);
   let t = Date.now();
-  const id = store.create({ name: 'Test Signer', org: 'Folio QA', email: 'qa@example.com', password: 'secret123' });
+  const id = await store.create({ name: 'Test Signer', org: 'Folio QA', email: 'qa@example.com', password: 'secret123' });
   console.log('created', id.name, id.selfSigned, `${Date.now() - t}ms`);
   const d = await PDFDocument.create(); const f = await d.embedFont(StandardFonts.Helvetica);
   d.addPage([612, 792]).drawText('Contract text', { x: 72, y: 700, size: 14, font: f });
@@ -22,8 +22,8 @@ const { createStore, verifyPdf } = require('../lib/signing');
   const vi = verifyPdf(inc)[0]; console.log('appended: intact=', vi.intact, 'coversAll=', vi.coversAll);
   // import roundtrip
   const p12 = fs.readFileSync(path.join(dir, id.id + '.p12'));
-  console.log('import ok:', store.importFile(p12, 'secret123').name);
-  try { store.importFile(p12, 'bad'); } catch (e) { console.log('import bad pw ->', e.message); }
-  console.log('ids:', store.list().length);
+  console.log('import ok:', (await store.importFile(p12, 'secret123')).name);
+  try { await store.importFile(p12, 'bad'); } catch (e) { console.log('import bad pw ->', e.message); }
+  console.log('ids:', (await store.list()).length);
   fs.rmSync(dir, { recursive: true, force: true });
 })().catch((e) => { console.error('FAIL', e); process.exit(1); });
