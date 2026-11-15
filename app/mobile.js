@@ -20,15 +20,18 @@
   }
   // A file handed to Folio by the system ("Open in Folio", Files, Drive, Mail...). iOS gives a file:// URL
   // to a copy in the app's Inbox; Android gives a content:// URI, which usually has no readable file name.
+  // The same file can be announced twice (launch URL and an open event); open it once.
+  const seenUrls = new Set();
   async function readOpenedUrl(url) {
-    if (!url || !/^(file|content):/i.test(url)) return null;
+    if (!url || !/^(file|content):/i.test(url) || seenUrls.has(url)) return null;
+    seenUrls.add(url);
     const { data } = await Filesystem.readFile({ path: url });
     const last = decodeURIComponent(url.split(/[/?#]/).filter(Boolean).pop() || '');
     const name = /\.pdf$/i.test(last) ? last : 'Document.pdf';
     return { name, path: null, data: typeof data === 'string' ? fromBase64(data) : new Uint8Array(await data.arrayBuffer()) };
   }
 
-  const OPEN_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.html,.htm,.txt,application/pdf,image/*';
+  const OPEN_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,application/pdf,image/*,text/plain';
   const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
   function toBase64(bytes) {
@@ -88,31 +91,57 @@
   }));
   const safe = (fn) => async (...args) => { try { return await fn(...args); } catch (e) { return { error: e.message || String(e) }; } };
 
-  // Digital IDs live in the app's private storage as password-protected .p12 files plus JSON metadata.
-  const ID_DIR = 'digital-ids';
+  // Digital IDs (password-protected .p12 plus metadata) live in the iOS Keychain / Android Keystore-backed
+  // storage, readable only on this device while it's unlocked and never synced to iCloud.
+  const Secure = Cap.registerPlugin('SecureStorage');
+  const ID_PREFIX = 'folio.id.';
+  const WHEN_UNLOCKED_THIS_DEVICE_ONLY = 1;
+  const secure = {
+    async get(key) { return (await Secure.internalGetItem({ prefixedKey: ID_PREFIX + key, sync: false })).data ?? null; },
+    async set(key, data) { await Secure.internalSetItem({ prefixedKey: ID_PREFIX + key, data, sync: false, access: WHEN_UNLOCKED_THIS_DEVICE_ONLY }); },
+    async remove(key) { await Secure.internalRemoveItem({ prefixedKey: ID_PREFIX + key, sync: false }); },
+    async keys() {
+      const { keys } = await Secure.internalGetPrefixedKeys({ prefix: ID_PREFIX, sync: false });
+      return keys.map((k) => (k.startsWith(ID_PREFIX) ? k.slice(ID_PREFIX.length) : k));
+    },
+  };
+  // IDs created by earlier builds were files in the app's data folder: move them into secure storage once.
+  async function migrateIdFiles() {
+    const fs = { directory: 'DATA' };
+    let files;
+    try { files = (await Filesystem.readdir({ ...fs, path: 'digital-ids' })).files.map((f) => f.name || f); } catch { return; }
+    for (const n of files.filter((f) => f.endsWith('.json'))) {
+      const id = n.slice(0, -5);
+      try {
+        const meta = (await Filesystem.readFile({ ...fs, path: `digital-ids/${n}`, encoding: 'utf8' })).data;
+        const p12 = (await Filesystem.readFile({ ...fs, path: `digital-ids/${id}.p12` })).data;
+        await secure.set(`${id}.p12`, p12);
+        await secure.set(`${id}.json`, meta);
+      } catch (e) { console.warn('migrate id', id, e); return; }
+    }
+    await Filesystem.rmdir({ ...fs, path: 'digital-ids', recursive: true }).catch(() => {});
+  }
+
   let signStore = null;
   async function ids() {
     if (signStore) return signStore;
     await loadScript('vendor/folio-sign.js');
-    const fs = { directory: 'DATA' };
+    await migrateIdFiles();
     signStore = window.FolioSign.createStore({
       async list() {
-        let files = [];
-        try { files = (await Filesystem.readdir({ ...fs, path: ID_DIR })).files; } catch { return []; }
-        const metas = await Promise.all(files.map((f) => f.name || f).filter((n) => n.endsWith('.json')).map(async (n) => {
-          try { return JSON.parse((await Filesystem.readFile({ ...fs, path: `${ID_DIR}/${n}`, encoding: 'utf8' })).data); } catch { return null; }
-        }));
-        return metas;
+        const keys = (await secure.keys()).filter((k) => k.endsWith('.json'));
+        return Promise.all(keys.map(async (k) => { try { return JSON.parse(await secure.get(k)); } catch { return null; } }));
       },
       async read(id) {
-        try { return fromBase64((await Filesystem.readFile({ ...fs, path: `${ID_DIR}/${id}.p12` })).data); } catch { return null; }
+        const b64 = await secure.get(`${id}.p12`);
+        return b64 ? fromBase64(b64) : null;
       },
       async write(id, p12, meta) {
-        await Filesystem.writeFile({ ...fs, path: `${ID_DIR}/${id}.p12`, data: toBase64(p12), recursive: true });
-        await Filesystem.writeFile({ ...fs, path: `${ID_DIR}/${id}.json`, data: JSON.stringify(meta), encoding: 'utf8', recursive: true });
+        await secure.set(`${id}.p12`, toBase64(p12));
+        await secure.set(`${id}.json`, JSON.stringify(meta));
       },
       async remove(id) {
-        for (const ext of ['p12', 'json']) await Filesystem.deleteFile({ ...fs, path: `${ID_DIR}/${id}.${ext}` }).catch(() => {});
+        for (const ext of ['p12', 'json']) await secure.remove(`${id}.${ext}`).catch(() => {});
       },
     });
     return signStore;
