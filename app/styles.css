@@ -96,7 +96,7 @@ i[data-i] svg { width: 100%; height: 100%; stroke: currentColor; fill: none; str
 .icon-btn.sm i[data-i] { width: 16px; height: 16px; }
 .icon-btn.danger:hover:not(:disabled) { color: var(--danger); background: var(--danger-soft); }
 .panel-toggle { display: none; }
-.panel-backdrop { display: none; }
+.panel-backdrop { display: none; cursor: pointer; } /* cursor: iOS only sends taps on 'clickable' elements */
 
 /* tool sets (Comment / Edit / E-Sign / Convert) */
 .modes { display: flex; gap: 2px; margin: 0 auto; padding: 3px; background: var(--panel-2); border-radius: 9px; }
@@ -182,7 +182,7 @@ select {
 .page.flash { animation: flash 1s ease-out; }
 @keyframes flash { 0% { box-shadow: 0 0 0 4px var(--accent), var(--shadow-page); } 100% { box-shadow: var(--shadow-page); } }
 
-body[data-tool="select"] svg.ov { cursor: default; }
+body[data-tool="select"] svg.ov { cursor: default; touch-action: pan-x pan-y; } /* one finger scrolls; marks are dragged (see app.js touch) */
 body[data-tool="text"] svg.ov { cursor: text; }
 body[data-tool="place"] svg.ov, body[data-tool="ink"] svg.ov,
 body[data-tool="rect"] svg.ov, body[data-tool="ellipse"] svg.ov, body[data-tool="line"] svg.ov, body[data-tool="arrow"] svg.ov,
@@ -315,6 +315,23 @@ input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px 
 .sig-line span { position: absolute; top: 4px; left: 0; font-size: 11px; color: #9aa0a8; }
 .sig-type { display: grid; gap: 10px; }
 .sig-preview { background: #fff; border: 1px solid var(--line-2); border-radius: 8px; height: 150px; display: grid; place-items: center; font-size: 54px; color: #1d2b6b; overflow: hidden; white-space: nowrap; padding: 0 16px; }
+/* metric-compatible stand-ins for Arial / Times New Roman / Courier New / Calibri */
+@font-face { font-family: "Arimo"; font-weight: 400; font-style: normal; src: url("vendor/fonts/metric/arimo-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Arimo"; font-weight: 700; font-style: normal; src: url("vendor/fonts/metric/arimo-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Arimo"; font-weight: 400; font-style: italic; src: url("vendor/fonts/metric/arimo-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Arimo"; font-weight: 700; font-style: italic; src: url("vendor/fonts/metric/arimo-700-italic.woff2") format("woff2"); }
+@font-face { font-family: "Tinos"; font-weight: 400; font-style: normal; src: url("vendor/fonts/metric/tinos-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Tinos"; font-weight: 700; font-style: normal; src: url("vendor/fonts/metric/tinos-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Tinos"; font-weight: 400; font-style: italic; src: url("vendor/fonts/metric/tinos-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Tinos"; font-weight: 700; font-style: italic; src: url("vendor/fonts/metric/tinos-700-italic.woff2") format("woff2"); }
+@font-face { font-family: "Cousine"; font-weight: 400; font-style: normal; src: url("vendor/fonts/metric/cousine-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cousine"; font-weight: 700; font-style: normal; src: url("vendor/fonts/metric/cousine-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cousine"; font-weight: 400; font-style: italic; src: url("vendor/fonts/metric/cousine-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Cousine"; font-weight: 700; font-style: italic; src: url("vendor/fonts/metric/cousine-700-italic.woff2") format("woff2"); }
+@font-face { font-family: "Carlito"; font-weight: 400; font-style: normal; src: url("vendor/fonts/metric/carlito-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Carlito"; font-weight: 700; font-style: normal; src: url("vendor/fonts/metric/carlito-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Carlito"; font-weight: 400; font-style: italic; src: url("vendor/fonts/metric/carlito-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Carlito"; font-weight: 700; font-style: italic; src: url("vendor/fonts/metric/carlito-700-italic.woff2") format("woff2"); }
 @font-face { font-family: "FolioSig Great Vibes"; src: url("vendor/fonts/sig/great-vibes.woff2") format("woff2"); font-display: block; }
 @font-face { font-family: "FolioSig Dancing Script"; src: url("vendor/fonts/sig/dancing-script.woff2") format("woff2"); font-display: block; }
 @font-face { font-family: "FolioSig Allura"; src: url("vendor/fonts/sig/allura.woff2") format("woff2"); font-display: block; }
@@ -455,8 +472,19 @@ legend { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; colo
   body.show-rail .rail, body.show-inspector .inspector { transform: translateX(0); }
   body.show-rail .panel-backdrop, body.show-inspector .panel-backdrop { display: block; position: absolute; inset: 0; z-index: 40; background: rgba(10, 14, 20, .4); }
 }
-/* Phones: tool-set tabs on their own row, pinch replaces the zoom controls, the ribbon scrolls sideways. */
+/* Phones: tool-set tabs on their own row, pinch replaces the zoom controls, the ribbon scrolls sideways,
+   and the inspector becomes a bottom sheet so the page stays visible above it. */
 @media (max-width: 600px) {
+  .work { overflow: hidden; } /* keeps the closed sheet out of sight below the page area */
+  .inspector {
+    top: auto; left: 0; right: 0; width: auto; max-height: 58vh; transform: translateY(100%);
+    border-left: 0; border-top: 1px solid var(--line); border-radius: 14px 14px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .inspector::before { content: ""; display: block; width: 38px; height: 5px; border-radius: 3px; background: var(--line-2); margin: 7px auto 0; flex: none; }
+  body.show-inspector .inspector { transform: translateY(0); }
+  .align-row .icon-btn, #aMore, .row .btn.sm { min-height: 40px; }
+  .align-row .icon-btn { min-width: 40px; }
   .bar { flex-wrap: wrap; row-gap: 6px; padding: 6px 8px; gap: 6px; }
   .bar .group:not(.right) .btn { padding: 0 8px; }
   .bar .group:not(.right) .btn span, #btnCombine { display: none; }

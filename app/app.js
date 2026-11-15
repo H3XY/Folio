@@ -16,6 +16,7 @@ const native = window.folio || null; // Electron bridge; absent when opened in a
 // Apple keyboards say ⌘ where Windows says Ctrl; the shortcut handlers accept either key.
 const APPLE = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
 const MOD = APPLE ? '⌘' : 'Ctrl';
+const TOUCH = matchMedia('(pointer: coarse)').matches; // phones and tablets: hints say tap / press and hold
 
 // Feature modules (fonts, edit, stamps, esign, convert) register themselves here.
 const Folio = (globalThis.Folio = {
@@ -684,6 +685,7 @@ function drawAnnots(pg) {
 
 // ---------------------------------------------------------------- pointer interaction
 let drag = null;
+let longPress = 0;
 
 function toPagePt(e, svg) {
   const r = svg.getBoundingClientRect();
@@ -741,6 +743,7 @@ function onDown(e, pid) {
     } else if (hit) {
       // Shift / Cmd / Ctrl-click (or "Select more" on touch screens) adds to or removes from the selection.
       const id = hit.dataset.aid;
+      const prevIds = S.sel?.pid === pid ? selIds() : [];
       const additive = e.shiftKey || e.metaKey || e.ctrlKey || S.additive;
       const inGroup = S.sel?.pid === pid && selIds().length > 1 && selIds().includes(id);
       if (additive) { toggleSelect(pid, id); if (!selIds().includes(id)) return; }
@@ -749,6 +752,19 @@ function onDown(e, pid) {
       // Dragging any member of a group moves the whole group; a click without a drag narrows it to that item.
       const group = selIds().filter((x) => x !== id).map((x) => getAnnot(pid, x)).filter(Boolean).map((g) => ({ a: g, orig: clone(g) }));
       drag = { mode: 'move', pid, a, start: pt, orig: clone(a), group, collapse: inGroup && !additive, before, moved: false };
+      // Touch: holding a mark still for half a second adds it to (or takes it out of) the selection.
+      if (e.pointerType === 'touch' && !additive) {
+        const held = drag;
+        clearTimeout(longPress);
+        longPress = setTimeout(() => {
+          if (drag !== held || held.moved) return;
+          drag = null;
+          if (inGroup) toggleSelect(pid, id);
+          else if (S.sel?.pid === pid && prevIds.length && !prevIds.includes(id)) { S.sel = { pid, aid: prevIds[prevIds.length - 1], ids: prevIds.length > 1 ? prevIds : undefined }; toggleSelect(pid, id); }
+          navigator.vibrate?.(12);
+          if (selIds().length > 1 && matchMedia('(max-width: 860px)').matches) { document.body.classList.add('show-inspector'); document.body.classList.remove('show-rail'); }
+        }, 500);
+      }
     } else {
       select(null);
       return;
@@ -847,6 +863,7 @@ function onMove(e) {
 }
 
 function onUp() {
+  clearTimeout(longPress);
   if (!drag) return;
   const d = drag;
   drag = null;
@@ -1170,7 +1187,9 @@ function renderGroupInspector(body) {
   row.innerHTML = '<button class="btn sm danger-outline" id="aDel"><i data-i="trash"></i><span>Delete all</span></button>';
   row.querySelector('#aDel').onclick = deleteSelected;
   body.appendChild(row);
-  body.insertAdjacentHTML('beforeend', '<p class="note">Drag any of them to move the group. Click one to select only it, or click the page to clear the selection.</p>');
+  body.insertAdjacentHTML('beforeend', TOUCH
+    ? '<p class="note">Drag any of them to move the group. Tap one to select only it, or press and hold to take it out of the group.</p>'
+    : '<p class="note">Drag any of them to move the group. Click one to select only it, or click the page to clear the selection.</p>');
   hydrateIcons(body);
 }
 
@@ -1262,7 +1281,7 @@ function renderInspector() {
     more.innerHTML = `<i data-i="select"></i><span>${S.additive ? 'Tap items to add them…' : 'Select more to align'}</span>`;
     more.onclick = () => { S.additive = !S.additive; renderInspector(); };
     body.appendChild(more);
-    body.insertAdjacentHTML('beforeend', `<p class="note">${APPLE ? 'Shift- or ⌘-click' : 'Shift- or Ctrl-click'} other items to select several and line them up.</p>`);
+    body.insertAdjacentHTML('beforeend', `<p class="note">${TOUCH ? 'Press and hold' : APPLE ? 'Shift- or ⌘-click' : 'Shift- or Ctrl-click'} other items to select several and line them up.</p>`);
   }
 
   if (!a && S.tool === 'select') {
@@ -2102,6 +2121,54 @@ $('#viewer').addEventListener('wheel', (e) => {
   setZoom(S.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
 }, { passive: false });
 window.addEventListener('resize', () => { if (S.fit) setZoom('fit'); });
+
+// ---------------------------------------------------------------- touch
+// Two-finger pinch zooms the document (trackpads arrive as ctrl+wheel above). While the fingers move the page stack
+// is scaled with a CSS transform; the pages re-render once at the final zoom. A pinch cancels any stroke the first
+// finger had started.
+(() => {
+  const v = $('#viewer'), stack = $('#stack');
+  let pinch = null;
+  const span = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  v.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      if (drag) {
+        if (drag.mode === 'create') { const pg = getPage(drag.pid); pg.annots = pg.annots.filter((x) => x !== drag.a); drawAnnots(pg); }
+        else if (drag.moved && drag.before) restore(drag.before);
+        drag = null;
+      }
+      clearTimeout(longPress);
+      const r = stack.getBoundingClientRect(), vr = v.getBoundingClientRect();
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      // remember the document point under the fingers so it stays there after the re-render
+      pinch = { d0: span(e.touches), scale: 1, vx: mx - vr.left, vy: my - vr.top, fx: v.scrollLeft + mx - vr.left, fy: v.scrollTop + my - vr.top };
+      stack.style.transformOrigin = `${mx - r.left}px ${my - r.top}px`;
+      return;
+    }
+    // With the Select tool one finger scrolls the page, except when it lands on a mark (which it then drags).
+    if (e.touches.length === 1 && S.tool === 'select' && e.target.closest?.('[data-aid], [data-h]')) e.preventDefault();
+  }, { passive: false });
+  v.addEventListener('touchmove', (e) => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    pinch.scale = clamp(span(e.touches) / pinch.d0, 0.1 / S.zoom, 6 / S.zoom);
+    stack.style.transform = `scale(${pinch.scale})`;
+  }, { passive: false });
+  const end = (e) => {
+    if (!pinch || e.touches.length >= 2) return;
+    const p = pinch;
+    pinch = null;
+    stack.style.transform = '';
+    if (Math.abs(p.scale - 1) <= 0.02) return;
+    const z0 = S.zoom;
+    setZoom(z0 * p.scale);
+    const k = S.zoom / z0;
+    v.scrollLeft = p.fx * k - p.vx;
+    v.scrollTop = p.fy * k - p.vy;
+  };
+  v.addEventListener('touchend', end);
+  v.addEventListener('touchcancel', end);
+})();
 
 // drag & drop files from Explorer
 let dragDepth = 0;

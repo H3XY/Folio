@@ -491,12 +491,13 @@
       body: `<p class="note">Choose one or more files. Folio converts each one to PDF and opens the result. Several files are combined into one document.</p>
         <ul class="conv-list">
           ${row('Images (PNG, JPEG, WebP, GIF)', true, 'Folio')}
-          ${row('Web pages (HTML) and text files', !!native, 'Folio')}
+          ${row('Web pages (HTML) and text files', !!native && !info.mobile, 'Folio')}
           ${office('word', 'Microsoft Word')}
           ${office('excel', 'Microsoft Excel')}
           ${office('powerpoint', 'Microsoft PowerPoint')}
         </ul>
-        ${native && !(info.word && info.excel && info.powerpoint) && !info.libreoffice ? '<p class="note">Office files are converted by Microsoft Office or LibreOffice, so one of them must be installed on this PC. Nothing is uploaded.</p>' : ''}`,
+        ${info.mobile ? '<p class="note">Converting web pages, text and Office files to PDF needs Folio for Windows or Mac for now.</p>'
+          : native && !(info.word && info.excel && info.powerpoint) && !info.libreoffice ? '<p class="note">Office files are converted by Microsoft Office or LibreOffice, so one of them must be installed on this PC. Nothing is uploaded.</p>' : ''}`,
       actions: [{ label: 'Cancel' }, { label: 'Choose files…', primary: true, run: () => { setTimeout(() => pickFiles('replace'), 0); return true; } }],
     });
   }

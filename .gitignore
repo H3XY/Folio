@@ -6,3 +6,4 @@ dist/
 release/
 .dump/
 *.log
+scripts/mobile-shims/roots.generated.json
