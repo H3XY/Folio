@@ -1,12 +1,15 @@
 name: Release
 
 # Builds Folio.exe from source on a GitHub-hosted runner so every release is traceable back to a
-# tagged commit (this is also a prerequisite for SignPath Foundation code signing, which only
-# trusts builds that come from a "trusted build system" like this one, not a local machine).
+# tagged commit (SignPath also requires this: it only signs builds from a "trusted build system"
+# like this one, not a local machine).
 #
-# Code signing is optional and off until SIGNPATH_API_TOKEN etc. are added as repo secrets (see
-# README's "Code signing" note). Until then this still produces an unsigned, reproducible,
-# source-verifiable build attached to a draft release.
+# Code signing is optional and off until SIGNPATH_API_TOKEN etc. are added as repo secrets. The
+# free SignPath Foundation application wasn't accepted in November 2026 (the program needs more
+# public visibility first); the same secrets work with a paid SignPath plan or a later accepted
+# reapplication — see README "Code signing". Until then this produces an unsigned, reproducible,
+# source-verifiable build attached to a draft release. Signed Windows installs are planned through
+# the Microsoft Store, which signs the MSIX itself (see build.yml).
 
 on:
   push:
