@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Folio</string>
+    <string name="title_activity_main">Folio</string>
+    <string name="package_name">com.h3xy.folio</string>
+    <string name="custom_url_scheme">com.h3xy.folio</string>
+</resources>

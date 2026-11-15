@@ -13,6 +13,9 @@ const { PDFDocument, StandardFonts, rgb, degrees, BlendMode, LineCapStyle,
   pushGraphicsState, popGraphicsState, concatTransformationMatrix } = PDFLib;
 
 const native = window.folio || null; // Electron bridge; absent when opened in a plain browser
+// Apple keyboards say ⌘ where Windows says Ctrl; the shortcut handlers accept either key.
+const APPLE = /Mac|iPhone|iPad|iPod/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent);
+const MOD = APPLE ? '⌘' : 'Ctrl';
 
 // Feature modules (fonts, edit, stamps, esign, convert) register themselves here.
 const Folio = (globalThis.Folio = {
@@ -62,6 +65,14 @@ const ICONS = {
   dup: '<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/>',
   extract: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 17v-6M9 14l3 3 3-3"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  objl: '<path d="M4 3v18"/><rect x="7" y="6" width="12" height="4" rx="1"/><rect x="7" y="14" width="7" height="4" rx="1"/>',
+  objch: '<path d="M12 3v3M12 10v4M12 18v3"/><rect x="5" y="6" width="14" height="4" rx="1"/><rect x="8" y="14" width="8" height="4" rx="1"/>',
+  objr: '<path d="M20 3v18"/><rect x="5" y="6" width="12" height="4" rx="1"/><rect x="10" y="14" width="7" height="4" rx="1"/>',
+  objt: '<path d="M3 4h18"/><rect x="6" y="7" width="4" height="12" rx="1"/><rect x="14" y="7" width="4" height="7" rx="1"/>',
+  objcv: '<path d="M3 12h3M10 12h4M18 12h3"/><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="8" width="4" height="8" rx="1"/>',
+  objb: '<path d="M3 20h18"/><rect x="6" y="5" width="4" height="12" rx="1"/><rect x="14" y="10" width="4" height="7" rx="1"/>',
+  disth: '<path d="M4 3v18M20 3v18"/><rect x="9" y="7" width="6" height="10" rx="1"/>',
+  distv: '<path d="M3 4h18M3 20h18"/><rect x="7" y="9" width="10" height="6" rx="1"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   front: '<rect x="8" y="8" width="12" height="12" rx="1" fill="currentColor"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>',
   initials: '<path d="M4 17V7M8 17l3-10 3 10M9 14h4"/><path d="M3 21h18"/>',
@@ -647,7 +658,17 @@ function drawAnnots(pg) {
   }
   // selection
   if (S.sel && S.sel.pid === pg.id) {
-    const a = getAnnot(pg.id, S.sel.aid);
+    const ids = selIds();
+    if (ids.length > 1) {
+      const k = 1 / S.zoom, pad = 3 * k;
+      for (const id of ids) {
+        const g = getAnnot(pg.id, id);
+        if (!g) continue;
+        const b = bbox(g);
+        html += `<rect x="${b.x - pad}" y="${b.y - pad}" width="${b.w + pad * 2}" height="${b.h + pad * 2}" fill="none" stroke="var(--sel)" stroke-width="${1.2 * k}" stroke-dasharray="${4 * k} ${3 * k}" pointer-events="none"/>`;
+      }
+    }
+    const a = ids.length === 1 && getAnnot(pg.id, S.sel.aid);
     if (a) {
       const k = 1 / S.zoom, b = bbox(a), pad = 3 * k, hs = 4.5 * k;
       html += `<rect x="${b.x - pad}" y="${b.y - pad}" width="${b.w + pad * 2}" height="${b.h + pad * 2}" fill="none" stroke="var(--sel)" stroke-width="${1.2 * k}" stroke-dasharray="${4 * k} ${3 * k}" pointer-events="none"/>`;
@@ -718,9 +739,16 @@ function onDown(e, pid) {
       const a = getAnnot(S.sel.pid, S.sel.aid);
       drag = { mode: 'handle', h: h.dataset.h, pid, a, start: pt, orig: clone(a), before, moved: false };
     } else if (hit) {
-      select(pid, hit.dataset.aid);
-      const a = getAnnot(pid, hit.dataset.aid);
-      drag = { mode: 'move', pid, a, start: pt, orig: clone(a), before, moved: false };
+      // Shift / Cmd / Ctrl-click (or "Select more" on touch screens) adds to or removes from the selection.
+      const id = hit.dataset.aid;
+      const additive = e.shiftKey || e.metaKey || e.ctrlKey || S.additive;
+      const inGroup = S.sel?.pid === pid && selIds().length > 1 && selIds().includes(id);
+      if (additive) { toggleSelect(pid, id); if (!selIds().includes(id)) return; }
+      else if (!inGroup) select(pid, id);
+      const a = getAnnot(pid, id);
+      // Dragging any member of a group moves the whole group; a click without a drag narrows it to that item.
+      const group = selIds().filter((x) => x !== id).map((x) => getAnnot(pid, x)).filter(Boolean).map((g) => ({ a: g, orig: clone(g) }));
+      drag = { mode: 'move', pid, a, start: pt, orig: clone(a), group, collapse: inGroup && !additive, before, moved: false };
     } else {
       select(null);
       return;
@@ -800,11 +828,8 @@ function onMove(e) {
       if (Math.hypot(pt.x - last[0], pt.y - last[1]) * S.zoom > 1.5) a.points.push([n2(pt.x), n2(pt.y)]);
     }
   } else if (drag.mode === 'move') {
-    const o = drag.orig;
-    if (Folio.annotTypes[a.type]?.move) Folio.annotTypes[a.type].move(a, o, dx, dy);
-    else if (o.points) a.points = o.points.map(([x, y]) => [n2(x + dx), n2(y + dy)]);
-    else if ('x1' in o) { a.x1 = n2(o.x1 + dx); a.y1 = n2(o.y1 + dy); a.x2 = n2(o.x2 + dx); a.y2 = n2(o.y2 + dy); }
-    else { a.x = n2(o.x + dx); a.y = n2(o.y + dy); }
+    moveFrom(a, drag.orig, dx, dy);
+    for (const g of drag.group || []) moveFrom(g.a, g.orig, dx, dy);
   } else if (drag.mode === 'handle') {
     const o = drag.orig;
     if (drag.h === 'se') {
@@ -836,6 +861,8 @@ function onUp() {
   } else if (d.moved) {
     checkpoint(d.before);
     renderInspector();
+  } else if (d.collapse) {
+    select(d.pid, d.a.id);
   }
 }
 
@@ -846,9 +873,80 @@ function onDbl(e, pid) {
   if (a?.type === 'text') { select(null); startEdit(pid, a, snap()); }
 }
 
+// Place annotation a at its original state o shifted by (dx, dy).
+function moveFrom(a, o, dx, dy) {
+  if (Folio.annotTypes[a.type]?.move) Folio.annotTypes[a.type].move(a, o, dx, dy);
+  else if (o.points) a.points = o.points.map(([x, y]) => [n2(x + dx), n2(y + dy)]);
+  else if ('x1' in o) { a.x1 = n2(o.x1 + dx); a.y1 = n2(o.y1 + dy); a.x2 = n2(o.x2 + dx); a.y2 = n2(o.y2 + dy); }
+  else { a.x = n2(o.x + dx); a.y = n2(o.y + dy); }
+}
+
+// Selection: S.sel = { pid, aid, ids? }. aid is the primary item; ids (2+) is a group on the same page.
+const selIds = () => (S.sel ? S.sel.ids || [S.sel.aid] : []);
+const selAnnots = () => selIds().map((id) => getAnnot(S.sel.pid, id)).filter(Boolean);
+function toggleSelect(pid, aid) {
+  if (!S.sel || S.sel.pid !== pid) { select(pid, aid); return; }
+  const cur = selIds();
+  const ids = cur.includes(aid) ? cur.filter((x) => x !== aid) : [...cur, aid];
+  if (!ids.length) { select(null); return; }
+  S.sel = { pid, aid: ids[ids.length - 1], ids: ids.length > 1 ? ids : undefined };
+  drawAnnots(getPage(pid));
+  renderInspector();
+}
+
+// Align the selection: a group lines up with its own bounds; a single item centres on the page.
+function alignSelection(how) {
+  const items = selAnnots();
+  if (!items.length) return;
+  const pg = getPage(S.sel.pid);
+  const boxes = items.map((a) => ({ a, b: bbox(a) }));
+  checkpoint();
+  if (how === 'disth' || how === 'distv') {
+    const [pos, size] = how === 'disth' ? ['x', 'w'] : ['y', 'h'];
+    boxes.sort((p, q) => p.b[pos] - q.b[pos]);
+    const first = boxes[0].b, last = boxes[boxes.length - 1].b;
+    const span = last[pos] + last[size] - first[pos];
+    const gap = (span - boxes.reduce((t, { b }) => t + b[size], 0)) / (boxes.length - 1);
+    let at = first[pos] + first[size] + gap;
+    for (const { a, b } of boxes.slice(1, -1)) {
+      moveFrom(a, clone(a), how === 'disth' ? n2(at - b.x) : 0, how === 'distv' ? n2(at - b.y) : 0);
+      at += b[size] + gap;
+    }
+  } else {
+    const ref = items.length === 1 ? { x: 0, y: 0, w: pg.W, h: pg.H } : (() => {
+      const x0 = Math.min(...boxes.map(({ b }) => b.x)), y0 = Math.min(...boxes.map(({ b }) => b.y));
+      return { x: x0, y: y0, w: Math.max(...boxes.map(({ b }) => b.x + b.w)) - x0, h: Math.max(...boxes.map(({ b }) => b.y + b.h)) - y0 };
+    })();
+    for (const { a, b } of boxes) {
+      const dx = how === 'left' ? ref.x - b.x : how === 'hcenter' ? ref.x + ref.w / 2 - (b.x + b.w / 2) : how === 'right' ? ref.x + ref.w - (b.x + b.w) : 0;
+      const dy = how === 'top' ? ref.y - b.y : how === 'vcenter' ? ref.y + ref.h / 2 - (b.y + b.h / 2) : how === 'bottom' ? ref.y + ref.h - (b.y + b.h) : 0;
+      if (dx || dy) moveFrom(a, clone(a), n2(dx), n2(dy));
+    }
+  }
+  drawAnnots(pg);
+  renderInspector();
+}
+function alignButtons(list) {
+  const NAMES = { left: ['objl', 'Align left'], hcenter: ['objch', 'Align centers horizontally'], right: ['objr', 'Align right'],
+    top: ['objt', 'Align top'], vcenter: ['objcv', 'Align centers vertically'], bottom: ['objb', 'Align bottom'],
+    disth: ['disth', 'Distribute horizontally'], distv: ['distv', 'Distribute vertically'] };
+  const row = document.createElement('div');
+  row.className = 'row align-row';
+  for (const how of list) {
+    if (how === '|') { row.insertAdjacentHTML('beforeend', '<span class="sep"></span>'); continue; }
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'icon-btn'; b.dataset.align = how; b.title = NAMES[how][1]; b.setAttribute('aria-label', NAMES[how][1]);
+    b.innerHTML = `<i data-i="${NAMES[how][0]}"></i>`;
+    b.onclick = () => alignSelection(how);
+    row.appendChild(b);
+  }
+  return row;
+}
+
 function select(pid, aid) {
   const prev = S.sel?.pid;
   S.sel = pid ? { pid, aid } : null;
+  if (!pid) S.additive = false;
   if (prev && prev !== pid) drawAnnots(getPage(prev));
   if (pid) drawAnnots(getPage(pid));
   renderInspector();
@@ -858,8 +956,10 @@ function deleteSelected() {
   if (!S.sel) return;
   checkpoint();
   const pg = getPage(S.sel.pid);
-  pg.annots = pg.annots.filter((a) => a.id !== S.sel.aid);
+  const gone = new Set(selIds());
+  pg.annots = pg.annots.filter((a) => !gone.has(a.id));
   S.sel = null;
+  S.additive = false;
   drawAnnots(pg);
   renderInspector();
 }
@@ -1050,9 +1150,34 @@ function fontControls(body, target, apply) {
   body.appendChild(f);
 }
 
+function renderGroupInspector(body) {
+  const n = selIds().length;
+  body.insertAdjacentHTML('beforeend', `<div class="tool-title"><i data-i="select"></i>${n} items <span class="label" style="margin-left:auto">selected</span></div>`);
+  const al = document.createElement('div');
+  al.className = 'field';
+  al.innerHTML = '<span class="label">Align</span>';
+  al.appendChild(alignButtons(['left', 'hcenter', 'right', '|', 'top', 'vcenter', 'bottom']));
+  body.appendChild(al);
+  if (n > 2) {
+    const ds = document.createElement('div');
+    ds.className = 'field';
+    ds.innerHTML = '<span class="label">Distribute evenly</span>';
+    ds.appendChild(alignButtons(['disth', 'distv']));
+    body.appendChild(ds);
+  }
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = '<button class="btn sm danger-outline" id="aDel"><i data-i="trash"></i><span>Delete all</span></button>';
+  row.querySelector('#aDel').onclick = deleteSelected;
+  body.appendChild(row);
+  body.insertAdjacentHTML('beforeend', '<p class="note">Drag any of them to move the group. Click one to select only it, or click the page to clear the selection.</p>');
+  hydrateIcons(body);
+}
+
 function renderInspector() {
   const body = $('#styleBody');
   body.innerHTML = '';
+  if (selIds().length > 1) { renderGroupInspector(body); return; }
   const a = S.sel && getAnnot(S.sel.pid, S.sel.aid);
   const tool = S.tool === 'place' ? null : S.tool;
   const type = a ? a.type : (['check', 'cross', 'dot'].includes(tool) ? 'mark' : tool);
@@ -1126,6 +1251,18 @@ function renderInspector() {
     row.querySelector('#aDup').onclick = duplicateSelected;
     row.querySelector('#aFront').onclick = bringToFront;
     row.querySelector('#aDel').onclick = deleteSelected;
+    const al = document.createElement('div');
+    al.className = 'field';
+    al.innerHTML = '<span class="label">Center on page</span>';
+    al.appendChild(alignButtons(['hcenter', 'vcenter']));
+    body.appendChild(al);
+    const more = document.createElement('button');
+    more.type = 'button'; more.className = 'btn sm'; more.id = 'aMore';
+    more.setAttribute('aria-pressed', String(!!S.additive));
+    more.innerHTML = `<i data-i="select"></i><span>${S.additive ? 'Tap items to add them…' : 'Select more to align'}</span>`;
+    more.onclick = () => { S.additive = !S.additive; renderInspector(); };
+    body.appendChild(more);
+    body.insertAdjacentHTML('beforeend', `<p class="note">${APPLE ? 'Shift- or ⌘-click' : 'Shift- or Ctrl-click'} other items to select several and line them up.</p>`);
   }
 
   if (!a && S.tool === 'select') {
@@ -1139,10 +1276,10 @@ function renderInspector() {
         <span class="kbd">R / E</span><span>Box / ellipse</span>
         <span class="kbd">S</span><span>Signature</span>
         <span class="kbd">X</span><span>Redact</span>
-        <span class="kbd">Ctrl F</span><span>Search</span>
-        <span class="kbd">Ctrl S</span><span>Save</span>
-        <span class="kbd">Ctrl Z / Y</span><span>Undo / redo</span>
-        <span class="kbd">Ctrl wheel</span><span>Zoom</span>
+        <span class="kbd">${MOD} F</span><span>Search</span>
+        <span class="kbd">${MOD} S</span><span>Save</span>
+        <span class="kbd">${APPLE ? '⌘ Z / ⇧⌘ Z' : 'Ctrl Z / Y'}</span><span>Undo / redo</span>
+        <span class="kbd">${APPLE ? 'Pinch' : 'Ctrl wheel'}</span><span>Zoom</span>
         <span class="kbd">Arrows</span><span>Nudge selection</span>
       </div></div>`);
   }
@@ -1319,7 +1456,7 @@ function rotatePages(dir) {
 async function deletePages() {
   const list = targetPages();
   if (!list.length) return;
-  if (list.length === S.pages.length && !(await confirmBox('Delete every page?', 'This leaves the document empty. You can undo with Ctrl+Z.', 'Delete all'))) return;
+  if (list.length === S.pages.length && !(await confirmBox('Delete every page?', `This leaves the document empty. You can undo with ${MOD}+Z.`, 'Delete all'))) return;
   checkpoint();
   const ids = new Set(list.map((p) => p.id));
   const firstIdx = pageIndex(list[0].id);
@@ -1630,11 +1767,45 @@ function drawSigPad() {
   c.addEventListener('pointerup', end);
   c.addEventListener('pointercancel', end);
 })();
-const SIG_FONT = '"Segoe Script", "Ink Free", "Brush Script MT", cursive';
+// Typed-signature styles: bundled handwriting fonts (app/vendor/fonts/sig), so a signature looks the same on
+// every platform. scale evens out the fonts' different visual sizes.
+const SIG_FONTS = [
+  { id: 'great-vibes', name: 'Great Vibes', scale: 1.1 },
+  { id: 'dancing-script', name: 'Dancing Script', scale: 1 },
+  { id: 'allura', name: 'Allura', scale: 1.1 },
+  { id: 'sacramento', name: 'Sacramento', scale: 1.15 },
+  { id: 'homemade-apple', name: 'Homemade Apple', scale: 0.75 },
+  { id: 'caveat', name: 'Caveat', scale: 1 },
+];
+const sigFontCss = (f) => `"FolioSig ${f.name}", cursive`;
+const sigFont = () => SIG_FONTS.find((f) => f.id === sig.font) || SIG_FONTS[0];
+try { sig.font = localStorage.getItem('folio.sigFont') || SIG_FONTS[0].id; } catch { sig.font = SIG_FONTS[0].id; }
+function renderSigFonts() {
+  const w = $('#sigFonts');
+  const txt = $('#sigText').value.trim() || (sig.kind === 'initials' ? 'AB' : 'Your name');
+  w.innerHTML = '';
+  for (const f of SIG_FONTS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sig-font'; b.title = f.name;
+    b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(f.id === sigFont().id));
+    b.style.fontFamily = sigFontCss(f); b.style.fontSize = `${Math.round(24 * f.scale)}px`; b.style.color = sig.ink;
+    b.textContent = txt;
+    b.onclick = () => {
+      sig.font = f.id;
+      try { localStorage.setItem('folio.sigFont', f.id); } catch { /* storage unavailable */ }
+      updateSigPreview();
+    };
+    w.appendChild(b);
+  }
+}
 function updateSigPreview() {
   const p = $('#sigPreview');
+  const f = sigFont();
   p.textContent = $('#sigText').value || (sig.kind === 'initials' ? 'AB' : 'Your name');
   p.style.color = $('#sigText').value ? sig.ink : '#b9bec6';
+  p.style.fontFamily = sigFontCss(f);
+  p.style.fontSize = `${Math.round(54 * f.scale)}px`;
+  renderSigFonts();
 }
 function trimCanvas(src) {
   const ctx = src.getContext('2d');
@@ -1652,7 +1823,7 @@ function trimCanvas(src) {
   out.getContext('2d').drawImage(src, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
   return out;
 }
-function useSignature() {
+async function useSignature() {
   let canvas;
   if (sig.mode === 'draw') {
     if (!sig.strokes.length) { toast('Draw your signature first', true); return; }
@@ -1660,12 +1831,16 @@ function useSignature() {
   } else {
     const txt = $('#sigText').value.trim();
     if (!txt) { toast('Type your name first', true); return; }
+    const f = sigFont();
+    const px = Math.round(120 * f.scale);
+    const font = `${px}px ${sigFontCss(f)}`;
+    try { await document.fonts.load(font, txt); } catch { /* falls back to the system cursive font */ }
     canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    ctx.font = `120px ${SIG_FONT}`;
-    canvas.width = Math.ceil(ctx.measureText(txt).width + 60); canvas.height = 220;
-    ctx.font = `120px ${SIG_FONT}`; ctx.fillStyle = sig.ink; ctx.textBaseline = 'middle';
-    ctx.fillText(txt, 30, 110);
+    ctx.font = font;
+    canvas.width = Math.ceil(ctx.measureText(txt).width + 80); canvas.height = Math.ceil(px * 2.2);
+    ctx.font = font; ctx.fillStyle = sig.ink; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, 40, canvas.height / 2);
   }
   const t = trimCanvas(canvas);
   if (!t) return;
@@ -1966,9 +2141,8 @@ document.addEventListener('keydown', (e) => {
   if (S.sel && k.startsWith('arrow')) {
     e.preventDefault();
     const step = e.shiftKey ? 10 : 1;
-    const a = getAnnot(S.sel.pid, S.sel.aid);
     checkpoint();
-    nudge(a, k === 'arrowleft' ? -step : k === 'arrowright' ? step : 0, k === 'arrowup' ? -step : k === 'arrowdown' ? step : 0);
+    for (const a of selAnnots()) nudge(a, k === 'arrowleft' ? -step : k === 'arrowright' ? step : 0, k === 'arrowup' ? -step : k === 'arrowdown' ? step : 0);
     drawAnnots(getPage(S.sel.pid));
     return;
   }
@@ -1994,7 +2168,7 @@ async function makeSample() {
   p.drawRectangle({ x: 0, y: 752, width: 612, height: 40, color: teal });
   p.drawText('SAMPLE DOCUMENT', { x: 60, y: 767, size: 10, font: bold, color: rgb(1, 1, 1) });
   p.drawText('Welcome to Folio', { x: 60, y: 690, size: 30, font: bold, color: ink });
-  p.drawText('Open your own PDF with Ctrl+O, or drop files anywhere in the window.', { x: 60, y: 662, size: 12, font, color: grey });
+  p.drawText(`Open your own PDF with ${APPLE ? "Cmd" : "Ctrl"}+O, or drop files anywhere in the window.`, { x: 60, y: 662, size: 12, font, color: grey });
   const tips = [
     ['Highlight (H)', 'drag across any line of text.'],
     ['Text (T)', 'click anywhere to type; double-click text to edit it.'],
@@ -2002,7 +2176,7 @@ async function makeSample() {
     ['Signature (S)', 'draw or type it once, then click to place it.'],
     ['Redact (X)', 'boxes are burned in on save. Text underneath is removed.'],
     ['Pages panel', 'drag thumbnails to reorder; rotate, duplicate, extract, delete.'],
-    ['Search (Ctrl+F)', 'find text, then highlight or redact every match at once.'],
+    [`Search (${APPLE ? "Cmd" : "Ctrl"}+F)`, 'find text, then highlight or redact every match at once.'],
     ['Forms', 'fill the fields below from the Forms tab.'],
   ];
   let y = 600;
@@ -2071,6 +2245,10 @@ async function makeSample() {
 // Runs after every feature module has loaded and registered with Folio.
 window.addEventListener('DOMContentLoaded', () => boot().catch((e) => { console.error(e); toast('Folio failed to start: ' + e.message, true); }));
 async function boot() {
+  if (APPLE) {
+    for (const el of document.querySelectorAll('[title*="Ctrl"]')) el.title = el.title.replace('Ctrl+Y', '⇧⌘Z').replace(/Ctrl\+/g, '⌘');
+    document.documentElement.classList.add('apple');
+  }
   let mode = 'comment';
   try { mode = localStorage.getItem('folio.mode') || mode; } catch { /* ignore */ }
   setMode(MODES[mode] ? mode : 'comment');

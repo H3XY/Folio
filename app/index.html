@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self' blob:; script-src-elem 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:">
 <title>Folio</title>
 <link rel="stylesheet" href="styles.css">
@@ -10,7 +10,7 @@
 <body>
 <header class="bar">
   <button class="icon-btn panel-toggle" id="btnPagesToggle" title="Pages" aria-label="Show pages panel"><i data-i="sidebarl"></i></button>
-  <div class="brand" aria-label="Folio"><span class="mark"></span>Folio</div>
+  <div class="brand" aria-label="Folio"><svg class="mark" viewBox="30 18 40 64" aria-hidden="true"><path d="M54.5 31H68v13.5z" fill="#86d6d1"/><g fill="currentColor"><rect x="32" y="20" width="14" height="60" rx="2.8"/><rect x="32" y="20" width="36" height="14" rx="2.8"/><rect x="32" y="48" width="28" height="12" rx="2.8"/></g></svg>Folio</div>
 
   <div class="group">
     <button class="btn" id="btnOpen" title="Open (Ctrl+O)"><i data-i="open"></i><span>Open</span></button>
@@ -127,6 +127,7 @@
     <div class="sig-type" id="sigTypeWrap" hidden>
       <input id="sigText" type="text" placeholder="Type your name" autocomplete="off" spellcheck="false">
       <div class="sig-preview" id="sigPreview"></div>
+      <div class="sig-fonts" id="sigFonts" role="radiogroup" aria-label="Signature style"></div>
     </div>
     <div class="sig-colors" id="sigColors"></div>
     <div class="sig-saved" id="sigSaved"></div>
@@ -169,6 +170,8 @@
 <script src="vendor/pdf.min.js"></script>
 <script src="vendor/pdf-lib.min.js"></script>
 <script src="vendor/fontkit.umd.min.js"></script>
+<script src="vendor/capacitor.js"></script>
+<script src="mobile.js"></script>
 <script src="app.js"></script>
 <script src="fonts.js"></script>
 <script src="forms.js"></script>
