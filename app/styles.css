@@ -472,6 +472,10 @@ legend { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; colo
   body.show-rail .rail, body.show-inspector .inspector { transform: translateX(0); }
   body.show-rail .panel-backdrop, body.show-inspector .panel-backdrop { display: block; position: absolute; inset: 0; z-index: 40; background: rgba(10, 14, 20, .4); }
 }
+/* Touch devices: long-press is Folio's "add to selection", so no system text selection or callout on the interface. */
+html.mobile body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html.mobile input, html.mobile textarea, html.mobile [contenteditable], html.mobile .ted { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
 /* Phones: tool-set tabs on their own row, pinch replaces the zoom controls, the ribbon scrolls sideways,
    and the inspector becomes a bottom sheet so the page stays visible above it. */
 @media (max-width: 600px) {

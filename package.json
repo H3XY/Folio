@@ -16,9 +16,15 @@
     "android": "npm run vendor && cap sync android && cap open android",
     "mobile:sync": "npm run vendor && cap sync",
     "package:mac": "npx --yes node@22 scripts/package.js --mac",
-    "mobile:assets": "npm run icon && node scripts/mobile-assets.js"
+    "mobile:assets": "npm run icon && node scripts/mobile-assets.js",
+    "android:keystore": "sh scripts/android-keystore.sh",
+    "android:bundle": "npm run vendor && cap sync android && cd android && ./gradlew bundleRelease",
+    "ios:archive": "npm run vendor && cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination generic/platform=iOS -archivePath dist/Folio.xcarchive archive",
+    "package:mas": "npx --yes node@22 scripts/package.js --mas",
+    "package:dmg": "npx --yes node@22 scripts/package.js --dmg"
   },
   "devDependencies": {
+    "@aparajita/capacitor-secure-storage": "^8.0.1",
     "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.6.2",
