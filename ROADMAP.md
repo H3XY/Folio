@@ -19,6 +19,22 @@ Matching *features* and *workflows* is fine: PDF is an open ISO standard (ISO 32
   another product's screenshots.
 - Have a lawyer review the store listings and marketing copy once before the first public launch.
 
+### USPTO check of the name "Folio" (2026-11-14, informal — not legal advice)
+
+No live US mark "FOLIO" covers PDF or document-editing software. The ones nearest to our field:
+
+| Mark | Serial | Status | Goods | Risk |
+|---|---|---|---|---|
+| FOLIO (Folio Works) | 50060413 | Pending (filed Aug 2026) | Class 9/42 note-taking and meeting software; organizing, searching, sharing business information | **Highest**: related productivity software |
+| FOLIO (Bauer Types) | 98652990, 75942264 | Registered | Class 9/42 font software | Moderate: software, different purpose |
+| PEPPER FOLIO (Vodori) | 87547408 | Registered | Class 42 SaaS for reviewing regulated content | Low: compound mark |
+| FOLIO BOOKS / FOLIO SOCIETY | 79450248, 79451994 | Pending | Class 9 e-publications | Low |
+| SMART FOLIO (Apple), other *FOLIO cases | — | Registered | Device cases | Low: unrelated goods |
+
+Many other FOLIO marks are finance, fabric, cutlery, watches and so on (unrelated). Before filing or launching:
+watch Folio Works' application, consider a distinctive store name such as "Folio PDF Editor" or a coined name, and
+get a clearance opinion from a trademark attorney (also check the App Store and Google Play for apps named Folio).
+
 ## Platforms
 
 | Platform | Shell | Store | Status |
