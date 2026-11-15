@@ -8,7 +8,7 @@ const APP_DIR = path.join(__dirname, 'app');
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.png': 'image/png', '.ttf': 'font/ttf', '.pfb': 'application/octet-stream', '.bcmap': 'application/octet-stream',
-  '.wasm': 'application/wasm', '.gz': 'application/gzip', '.traineddata': 'application/octet-stream',
+  '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.gz': 'application/gzip', '.traineddata': 'application/octet-stream',
 };
 const OPENABLE = /\.(pdf|png|jpe?g|webp|gif|docx?|rtf|odt|xlsx?|csv|ods|pptx?|odp|html?|txt)$/i;
 
@@ -110,8 +110,28 @@ function createWindow() {
   }
 }
 
+// Name and icon. A packaged build gets both from its bundle (npm run package:mac); when run with `npm start`
+// macOS would otherwise show Electron's name in the menus and Electron's icon in the Dock.
+app.setName('Folio');
+app.setAboutPanelOptions({ applicationName: 'Folio', applicationVersion: app.getVersion(), copyright: `© ${new Date().getFullYear()} Folio` });
+
+// macOS delivers files opened from Finder or dropped on the Dock icon as 'open-file' events, not argv.
+app.on('open-file', (e, p) => {
+  e.preventDefault();
+  if (!OPENABLE.test(p) || !fs.existsSync(p)) return;
+  if (win && !win.webContents.isLoading()) win.webContents.send('open-files', readFiles([p]));
+  else pendingPaths.push(p);
+});
+
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    const devIcon = path.join(__dirname, 'build', 'icon-mac.png');
+    if (fs.existsSync(devIcon)) app.dock.setIcon(devIcon);
+  }
+  // Windows: no menu bar (the toolbar has everything). macOS needs a menu for Cmd+C/V/Z/Q to work at all.
+  Menu.setApplicationMenu(process.platform === 'darwin'
+    ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' }])
+    : null);
 
   protocol.handle('app', async (req) => {
     const { pathname } = new URL(req.url);
@@ -136,6 +156,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('activate', () => { if (!win && app.isReady()) createWindow(); });
 
 // ---- IPC ----
 ipcMain.handle('take-pending', () => {

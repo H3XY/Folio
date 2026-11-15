@@ -48,6 +48,8 @@ body {
   background: var(--panel); color: var(--ink);
   font: 13px/1.4 var(--ui); overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  /* iPhone/iPad notch, Dynamic Island and home indicator (zero on desktop) */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -66,8 +68,7 @@ i[data-i] svg { width: 100%; height: 100%; stroke: currentColor; fill: none; str
   background: var(--panel); min-width: 0;
 }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; padding-right: 6px; }
-.mark { width: 18px; height: 22px; border-radius: 2px 6px 2px 2px; background: var(--accent); position: relative; }
-.mark::after { content: ""; position: absolute; right: 0; top: 0; border: 4px solid var(--panel); border-left-color: transparent; border-bottom-color: transparent; }
+.mark { width: 14px; height: 22px; color: var(--accent); flex: none; }
 .group { display: flex; align-items: center; gap: 4px; }
 .group.right { margin-left: auto; }
 .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex: none; }
@@ -313,7 +314,23 @@ input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px 
 .sig-line { position: absolute; left: 6%; right: 6%; bottom: 26%; border-top: 1px solid #c2c7cf; pointer-events: none; }
 .sig-line span { position: absolute; top: 4px; left: 0; font-size: 11px; color: #9aa0a8; }
 .sig-type { display: grid; gap: 10px; }
-.sig-preview { background: #fff; border: 1px solid var(--line-2); border-radius: 8px; height: 150px; display: grid; place-items: center; font: 54px "Segoe Script", "Ink Free", "Brush Script MT", cursive; color: #1d2b6b; overflow: hidden; white-space: nowrap; padding: 0 16px; }
+.sig-preview { background: #fff; border: 1px solid var(--line-2); border-radius: 8px; height: 150px; display: grid; place-items: center; font-size: 54px; color: #1d2b6b; overflow: hidden; white-space: nowrap; padding: 0 16px; }
+@font-face { font-family: "FolioSig Great Vibes"; src: url("vendor/fonts/sig/great-vibes.woff2") format("woff2"); font-display: block; }
+@font-face { font-family: "FolioSig Dancing Script"; src: url("vendor/fonts/sig/dancing-script.woff2") format("woff2"); font-display: block; }
+@font-face { font-family: "FolioSig Allura"; src: url("vendor/fonts/sig/allura.woff2") format("woff2"); font-display: block; }
+@font-face { font-family: "FolioSig Sacramento"; src: url("vendor/fonts/sig/sacramento.woff2") format("woff2"); font-display: block; }
+@font-face { font-family: "FolioSig Homemade Apple"; src: url("vendor/fonts/sig/homemade-apple.woff2") format("woff2"); font-display: block; }
+@font-face { font-family: "FolioSig Caveat"; src: url("vendor/fonts/sig/caveat.woff2") format("woff2"); font-display: block; }
+.sig-fonts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.sig-font {
+  height: 52px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: #fff;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 50px;
+}
+.sig-font[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.align-row { gap: 2px; flex-wrap: wrap; align-items: center; }
+.align-row .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+#aMore { justify-self: start; }
+#aMore[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .sig-colors { display: flex; gap: 8px; align-items: center; }
 .sig-saved { display: flex; gap: 8px; flex-wrap: wrap; }
 .sig-saved:empty { display: none; }
@@ -437,6 +454,20 @@ legend { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; colo
   .inspector { right: 0; transform: translateX(100%); }
   body.show-rail .rail, body.show-inspector .inspector { transform: translateX(0); }
   body.show-rail .panel-backdrop, body.show-inspector .panel-backdrop { display: block; position: absolute; inset: 0; z-index: 40; background: rgba(10, 14, 20, .4); }
+}
+/* Phones: tool-set tabs on their own row, pinch replaces the zoom controls, the ribbon scrolls sideways. */
+@media (max-width: 600px) {
+  .bar { flex-wrap: wrap; row-gap: 6px; padding: 6px 8px; gap: 6px; }
+  .bar .group:not(.right) .btn { padding: 0 8px; }
+  .bar .group:not(.right) .btn span, #btnCombine { display: none; }
+  .bar .group.right { margin-left: auto; }
+  #zoomOut, #zoomIn, #zoomSel, #btnTheme, .bar .sep { display: none; }
+  .modes { order: 10; flex: 1 0 100%; margin: 0; }
+  .modes button { flex: 1; padding: 6px 4px; }
+  .ribbon { justify-content: flex-start; padding: 4px 8px; }
+  .ribbon .tool { min-height: 40px; min-width: 40px; }
+  .status { gap: 10px; }
+  .status .hint, .offline span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
