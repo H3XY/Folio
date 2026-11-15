@@ -27,6 +27,25 @@ for (const f of ['dancing-script', 'great-vibes', 'caveat', 'sacramento', 'allur
   fs.copyFileSync(nm(`@fontsource/${f}/files/${f}-latin-400-normal.woff2`), path.join(out, 'fonts', 'sig', `${f}.woff2`));
   fs.copyFileSync(nm(`@fontsource/${f}/LICENSE`), path.join(out, 'fonts', 'sig', `${f}.LICENSE.txt`));
 }
+// Metric-compatible open fonts (OFL) standing in for Arial / Times New Roman / Courier New / Calibri where the
+// system doesn't have them (always on iOS/Android; Calibri on macOS). map.json: Windows file name -> bundled file.
+const metric = path.join(out, 'fonts', 'metric');
+fs.mkdirSync(metric, { recursive: true });
+const METRIC = { arimo: ['arial', 'arialbd', 'ariali', 'arialbi'], tinos: ['times', 'timesbd', 'timesi', 'timesbi'],
+  cousine: ['cour', 'courbd', 'couri', 'courbi'], carlito: ['calibri', 'calibrib', 'calibrii', 'calibriz'] };
+const VARIANTS = ['400-normal', '700-normal', '400-italic', '700-italic'];
+const metricMap = {};
+for (const [fam, winNames] of Object.entries(METRIC)) {
+  VARIANTS.forEach((v, i) => {
+    const file = `${fam}-${v}.woff2`;
+    fs.copyFileSync(nm(`@fontsource/${fam}/files/${fam}-latin-${v}.woff2`), path.join(metric, file));
+    metricMap[`${winNames[i]}.ttf`] = file;
+  });
+  fs.copyFileSync(nm(`@fontsource/${fam}/LICENSE`), path.join(metric, `${fam}.LICENSE.txt`));
+}
+fs.writeFileSync(path.join(metric, 'map.json'), JSON.stringify(metricMap, null, 1));
 fs.cpSync(nm('pdfjs-dist/cmaps'), path.join(out, 'cmaps'), { recursive: true });
 fs.cpSync(nm('pdfjs-dist/standard_fonts'), path.join(out, 'standard_fonts'), { recursive: true });
+// Browser bundles of the export and signing code for the iOS/Android apps
+require('./build-mobile')();
 console.log('vendored into', out);

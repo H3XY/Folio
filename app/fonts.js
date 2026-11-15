@@ -1,18 +1,19 @@
 /* Folio — fonts.
-   Text is drawn with the matching Windows TrueType font (embedded, subset) so it looks the same as on screen
+   Text is drawn with the matching system TrueType font (or a bundled metric-compatible stand-in, see
+   app/vendor/fonts/metric) (embedded, subset) so it looks the same as on screen
    and any character the font has can be used. Falls back to the PDF standard fonts when a file is missing. */
 'use strict';
 
 (() => {
   // [regular, bold, italic, bold italic] file names in C:\Windows\Fonts
   const FAMILIES = [
-    { name: 'Arial', css: 'Arial, Helvetica, sans-serif', files: ['arial.ttf', 'arialbd.ttf', 'ariali.ttf', 'arialbi.ttf'], std: 'sans' },
+    { name: 'Arial', css: 'Arial, Arimo, Helvetica, sans-serif', files: ['arial.ttf', 'arialbd.ttf', 'ariali.ttf', 'arialbi.ttf'], std: 'sans' },
     { name: 'Calibri', css: 'Calibri, Carlito, Arial, sans-serif', files: ['calibri.ttf', 'calibrib.ttf', 'calibrii.ttf', 'calibriz.ttf'], std: 'sans' },
-    { name: 'Times New Roman', css: '"Times New Roman", Times, serif', files: ['times.ttf', 'timesbd.ttf', 'timesi.ttf', 'timesbi.ttf'], std: 'serif' },
+    { name: 'Times New Roman', css: '"Times New Roman", Tinos, Times, serif', files: ['times.ttf', 'timesbd.ttf', 'timesi.ttf', 'timesbi.ttf'], std: 'serif' },
     { name: 'Georgia', css: 'Georgia, serif', files: ['georgia.ttf', 'georgiab.ttf', 'georgiai.ttf', 'georgiaz.ttf'], std: 'serif' },
     { name: 'Garamond', css: 'Garamond, serif', files: ['GARA.TTF', 'GARABD.TTF', 'GARAIT.TTF', 'GARAIT.TTF'], std: 'serif' },
     { name: 'Book Antiqua', css: '"Book Antiqua", Palatino, serif', files: ['BKANT.TTF', 'ANTQUAB.TTF', 'ANTQUAI.TTF', 'ANTQUABI.TTF'], std: 'serif' },
-    { name: 'Courier New', css: '"Courier New", Courier, monospace', files: ['cour.ttf', 'courbd.ttf', 'couri.ttf', 'courbi.ttf'], std: 'mono' },
+    { name: 'Courier New', css: '"Courier New", Cousine, Courier, monospace', files: ['cour.ttf', 'courbd.ttf', 'couri.ttf', 'courbi.ttf'], std: 'mono' },
     { name: 'Consolas', css: 'Consolas, monospace', files: ['consola.ttf', 'consolab.ttf', 'consolai.ttf', 'consolaz.ttf'], std: 'mono' },
     { name: 'Verdana', css: 'Verdana, sans-serif', files: ['verdana.ttf', 'verdanab.ttf', 'verdanai.ttf', 'verdanaz.ttf'], std: 'sans' },
     { name: 'Tahoma', css: 'Tahoma, sans-serif', files: ['tahoma.ttf', 'tahomabd.ttf', 'tahoma.ttf', 'tahomabd.ttf'], std: 'sans' },
