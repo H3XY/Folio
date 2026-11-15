@@ -91,8 +91,6 @@ belong to you. Step-by-step instructions and paste-ready listing text: `store/LI
 - [ ] **You**: Google Play account ($25) → upload key, closed test with **12+ testers for 14 days**, then production.
 - [ ] **You**: Microsoft Partner Center → reserve the name, set the 3 identity variables, submit the MSIX.
 - [ ] **You**: confirm the export-compliance answer (encryption exemption) and the final app name.
-- [ ] Re-take the iPhone document screenshot after this change (the welcome text now says "Tap the folder button"
-      on phones instead of "Cmd+O").
 
 ## Phase 3 — feature parity with commercial PDF suites
 
